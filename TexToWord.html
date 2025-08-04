@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeX to Word Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: rgba(103, 126, 234, 0.05);
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: rgba(103, 126, 234, 0.1);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(103, 126, 234, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(103, 126, 234, 0.4);
+        }
+
+        .textarea-container {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(103, 126, 234, 0.1);
+        }
+
+        .convert-btn {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            padding: 15px;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .convert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        .convert-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .preview-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .preview-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            min-height: 200px;
+            font-family: 'Times New Roman', serif;
+            line-height: 1.6;
+            border: 1px solid #ddd;
+        }
+
+        .download-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .download-btn {
+            padding: 12px 30px;
+            background: linear-gradient(45deg, #dc3545, #fd7e14);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+        }
+
+        .status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .format-options {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(103, 126, 234, 0.05);
+            border-radius: 10px;
+        }
+
+        .format-options h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .option-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        input[type="checkbox"], input[type="radio"] {
+            margin-right: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .option-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TeX to Word Converter</h1>
+        
+        <div class="upload-section">
+            <p style="margin-bottom: 15px; color: #666;">TeXファイルをアップロードするか、直接LaTeXコードを入力してください</p>
+            <input type="file" id="fileInput" class="file-input" accept=".tex" />
+            <button onclick="document.getElementById('fileInput').click()" class="upload-btn">
+                📄 TeXファイルを選択
+            </button>
+            <p style="margin-top: 10px; font-size: 12px; color: #888;">対応形式: .tex</p>
+        </div>
+
+        <div class="textarea-container">
+            <label for="texInput">LaTeXコード:</label>
+            <textarea id="texInput" placeholder="LaTeXコードを入力してください...
+
+例:
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\title{サンプル文書}
+\author{作者名}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{はじめに}
+これはサンプルの文書です。
+
+\subsection{数式の例}
+アインシュタインの質量エネルギー等価性：
+\begin{equation}
+E = mc^2
+\end{equation}
+
+\section{まとめ}
+LaTeXからWordへの変換が完了しました。
+
+\end{document}"></textarea>
+        </div>
+
+        <div class="format-options">
+            <h3>変換オプション</h3>
+            <div class="option-group">
+                <div class="option">
+                    <input type="checkbox" id="preserveFormatting" checked />
+                    <label for="preserveFormatting">書式を保持</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="convertMath" checked />
+                    <label for="convertMath">数式を変換</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="includeComments" />
+                    <label for="includeComments">コメントを含める</label>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="convertTexToWord()" class="convert-btn" id="convertBtn">
+            🔄 Word形式に変換
+        </button>
+
+        <div id="status"></div>
+
+        <div class="preview-section" id="previewSection" style="display: none;">
+            <h3>プレビュー:</h3>
+            <div class="preview-content" id="previewContent"></div>
+            
+            <div class="download-section">
+                <a href="#" id="downloadBtn" class="download-btn" style="display: none;">
+                    💾 Word文書をダウンロード
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let convertedContent = '';
+
+        // ファイル読み込み
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type === 'text/plain' || file.name.endsWith('.tex')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('texInput').value = e.target.result;
+                    showStatus('ファイルが読み込まれました', 'success');
+                };
+                reader.readAsText(file);
+            } else {
+                showStatus('有効なTeXファイルを選択してください', 'error');
+            }
+        });
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        function convertTexToWord() {
+            const texContent = document.getElementById('texInput').value.trim();
+            
+            if (!texContent) {
+                showStatus('LaTeXコードを入力してください', 'error');
+                return;
+            }
+
+            const convertBtn = document.getElementById('convertBtn');
+            convertBtn.disabled = true;
+            convertBtn.textContent = '変換中...';
+
+            try {
+                // LaTeX to HTML conversion (simplified)
+                const htmlContent = parseLatexToHtml(texContent);
+                
+                // Show preview
+                document.getElementById('previewContent').innerHTML = htmlContent;
+                document.getElementById('previewSection').style.display = 'block';
+                
+                // Prepare Word document content
+                convertedContent = createWordDocument(htmlContent);
+                
+                // Enable download
+                setupDownload();
+                
+                showStatus('変換が完了しました！', 'success');
+            } catch (error) {
+                showStatus('変換中にエラーが発生しました: ' + error.message, 'error');
+            }
+
+            convertBtn.disabled = false;
+            convertBtn.textContent = '🔄 Word形式に変換';
+        }
+
+        function parseLatexToHtml(texContent) {
+            let html = texContent;
+            
+            // Remove comments if not included
+            if (!document.getElementById('includeComments').checked) {
+                html = html.replace(/%.*$/gm, '');
+            }
+            
+            // Convert LaTeX accents and special characters FIRST (before other processing)
+            html = convertLatexAccents(html);
+            
+            // Document class and packages (remove)
+            html = html.replace(/\\documentclass(\[.*?\])?\{.*?\}/g, '');
+            html = html.replace(/\\usepackage(\[.*?\])?\{.*?\}/g, '');
+            html = html.replace(/\\begin\{document\}/g, '');
+            html = html.replace(/\\end\{document\}/g, '');
+            
+            // Title, author, date
+            html = html.replace(/\\title\{(.*?)\}/g, '<h1 style="text-align: center;">$1</h1>');
+            html = html.replace(/\\author\{(.*?)\}/g, '<p style="text-align: center; font-weight: bold;">$1</p>');
+            html = html.replace(/\\date\{(.*?)\}/g, '<p style="text-align: center;">$1</p>');
+            html = html.replace(/\\maketitle/g, '');
+            html = html.replace(/\\today/g, new Date().toLocaleDateString('ja-JP'));
+            
+            // Sections
+            html = html.replace(/\\section\{(.*?)\}/g, '<h2>$1</h2>');
+            html = html.replace(/\\subsection\{(.*?)\}/g, '<h3>$1</h3>');
+            html = html.replace(/\\subsubsection\{(.*?)\}/g, '<h4>$1</h4>');
+            
+            // Text formatting
+            html = html.replace(/\\textbf\{(.*?)\}/g, '<strong>$1</strong>');
+            html = html.replace(/\\textit\{(.*?)\}/g, '<em>$1</em>');
+            html = html.replace(/\\underline\{(.*?)\}/g, '<u>$1</u>');
+            
+            // Lists
+            html = html.replace(/\\begin\{itemize\}/g, '<ul>');
+            html = html.replace(/\\end\{itemize\}/g, '</ul>');
+            html = html.replace(/\\begin\{enumerate\}/g, '<ol>');
+            html = html.replace(/\\end\{enumerate\}/g, '</ol>');
+            html = html.replace(/\\item/g, '<li>');
+            
+            // Math equations
+            if (document.getElementById('convertMath').checked) {
+                html = html.replace(/\\begin\{equation\}(.*?)\\end\{equation\}/gs, '<div style="text-align: center; margin: 20px 0; font-style: italic; font-size: 18px;">$1</div>');
+                html = html.replace(/\$\$(.*?)\$\$/gs, '<div style="text-align: center; margin: 15px 0; font-style: italic;">$1</div>');
+                html = html.replace(/\$(.*?)\$/g, '<span style="font-style: italic;">$1</span>');
+            }
+            
+            // Paragraphs
+            html = html.replace(/\n\n/g, '</p><p>');
+            html = '<p>' + html + '</p>';
+            html = html.replace(/<p>\s*<\/p>/g, '');
+            
+            // Clean up remaining commands (but preserve converted accents)
+            html = html.replace(/\\[a-zA-Z]+(\[.*?\])?\{(.*?)\}/g, '$2');
+            html = html.replace(/\\\\/g, '<br>'); // Line breaks
+            
+            return html;
+        }
+
+        function convertLatexAccents(text) {
+            // LaTeX accent commands mapping
+            const accentMap = {
+                // Macron (long vowel mark)
+                '\\=': {
+                    'a': 'ā', 'A': 'Ā', 'e': 'ē', 'E': 'Ē', 'i': 'ī', 'I': 'Ī',
+                    'o': 'ō', 'O': 'Ō', 'u': 'ū', 'U': 'Ū', 'y': 'ȳ', 'Y': 'Ȳ'
+                },
+                // Acute accent
+                "\\'": {
+                    'a': 'á', 'A': 'Á', 'e': 'é', 'E': 'É', 'i': 'í', 'I': 'Í',
+                    'o': 'ó', 'O': 'Ó', 'u': 'ú', 'U': 'Ú', 'y': 'ý', 'Y': 'Ý',
+                    'c': 'ć', 'C': 'Ć', 'n': 'ń', 'N': 'Ń', 's': 'ś', 'S': 'Ś',
+                    'z': 'ź', 'Z': 'Ź', 'r': 'ŕ', 'R': 'Ŕ', 'l': 'ĺ', 'L': 'Ĺ'
+                },
+                // Grave accent
+                '\\`': {
+                    'a': 'à', 'A': 'À', 'e': 'è', 'E': 'È', 'i': 'ì', 'I': 'Ì',
+                    'o': 'ò', 'O': 'Ò', 'u': 'ù', 'U': 'Ù'
+                },
+                // Circumflex
+                '\\^': {
+                    'a': 'â', 'A': 'Â', 'e': 'ê', 'E': 'Ê', 'i': 'î', 'I': 'Î',
+                    'o': 'ô', 'O': 'Ô', 'u': 'û', 'U': 'Û', 'w': 'ŵ', 'W': 'Ŵ',
+                    'y': 'ŷ', 'Y': 'Ŷ', 'c': 'ĉ', 'C': 'Ĉ', 'g': 'ĝ', 'G': 'Ĝ',
+                    'h': 'ĥ', 'H': 'Ĥ', 'j': 'ĵ', 'J': 'Ĵ', 's': 'ŝ', 'S': 'Ŝ'
+                },
+                // Diaeresis/Umlaut
+                '\\"': {
+                    'a': 'ä', 'A': 'Ä', 'e': 'ë', 'E': 'Ë', 'i': 'ï', 'I': 'Ï',
+                    'o': 'ö', 'O': 'Ö', 'u': 'ü', 'U': 'Ü', 'y': 'ÿ', 'Y': 'Ÿ'
+                },
+                // Tilde
+                '\\~': {
+                    'a': 'ã', 'A': 'Ã', 'n': 'ñ', 'N': 'Ñ', 'o': 'õ', 'O': 'Õ',
+                    'i': 'ĩ', 'I': 'Ĩ', 'u': 'ũ', 'U': 'Ũ'
+                },
+                // Breve
+                '\\u': {
+                    'a': 'ă', 'A': 'Ă', 'e': 'ĕ', 'E': 'Ĕ', 'g': 'ğ', 'G': 'Ğ',
+                    'i': 'ĭ', 'I': 'Ĭ', 'o': 'ŏ', 'O': 'Ŏ', 'u': 'ŭ', 'U': 'Ŭ'
+                },
+                // Dot above
+                '\\.': {
+                    'c': 'ċ', 'C': 'Ċ', 'e': 'ė', 'E': 'Ė', 'g': 'ġ', 'G': 'Ġ',
+                    'i': 'ı̇', 'I': 'İ', 'z': 'ż', 'Z': 'Ż'
+                },
+                // Ring above
+                '\\r': {
+                    'a': 'å', 'A': 'Å', 'u': 'ů', 'U': 'Ů'
+                },
+                // Caron/Hacek
+                '\\v': {
+                    'c': 'č', 'C': 'Č', 'd': 'ď', 'D': 'Ď', 'e': 'ě', 'E': 'Ě',
+                    'l': 'ľ', 'L': 'Ľ', 'n': 'ň', 'N': 'Ň', 'r': 'ř', 'R': 'Ř',
+                    's': 'š', 'S': 'Š', 't': 'ť', 'T': 'Ť', 'z': 'ž', 'Z': 'Ž'
+                },
+                // Double acute
+                '\\H': {
+                    'o': 'ő', 'O': 'Ő', 'u': 'ű', 'U': 'Ű'
+                },
+                // Cedilla
+                '\\c': {
+                    'c': 'ç', 'C': 'Ç', 's': 'ş', 'S': 'Ş', 't': 'ţ', 'T': 'Ţ'
+                },
+                // Ogonek
+                '\\k': {
+                    'a': 'ą', 'A': 'Ą', 'e': 'ę', 'E': 'Ę', 'i': 'į', 'I': 'Į',
+                    'o': 'ǫ', 'O': 'Ǫ', 'u': 'ų', 'U': 'Ų'
+                }
+            };
+
+            let result = text;
+
+            // Process each accent type
+            for (const [accent, charMap] of Object.entries(accentMap)) {
+                // Handle both {char} and char forms
+                const escapedAccent = accent.replace(/\\/g, '\\\\');
+                
+                // Pattern for \accent{char}
+                const pattern1 = new RegExp(escapedAccent + '\\{([a-zA-Z])\\}', 'g');
+                result = result.replace(pattern1, (match, char) => {
+                    return charMap[char] || match;
+                });
+                
+                // Pattern for \accent char (without braces)
+                const pattern2 = new RegExp(escapedAccent + '([a-zA-Z])', 'g');
+                result = result.replace(pattern2, (match, char) => {
+                    return charMap[char] || match;
+                });
+            }
+
+            // Special cases for common LaTeX symbols
+            const specialSymbols = {
+                '\\aa': 'å',
+                '\\AA': 'Å',
+                '\\ae': 'æ',
+                '\\AE': 'Æ',
+                '\\oe': 'œ',
+                '\\OE': 'Œ',
+                '\\o': 'ø',
+                '\\O': 'Ø',
+                '\\l': 'ł',
+                '\\L': 'Ł',
+                '\\ss': 'ß',
+                '\\i': 'ı',
+                '\\j': 'ȷ',
+                '\\ng': 'ŋ',
+                '\\NG': 'Ŋ',
+                '\\dh': 'ð',
+                '\\DH': 'Ð',
+                '\\th': 'þ',
+                '\\TH': 'Þ'
+            };
+
+            for (const [latex, unicode] of Object.entries(specialSymbols)) {
+                const pattern = new RegExp('\\' + latex.replace(/\\/g, '\\\\') + '(?![a-zA-Z])', 'g');
+                result = result.replace(pattern, unicode);
+            }
+
+            return result;
+        }
+
+        function createWordDocument(htmlContent) {
+            // Create Word document in HTML format with proper headers
+            const wordDoc = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <style>
+        body {
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            margin: 1in;
+            color: #000;
+        }
+        h1 { font-size: 18pt; font-weight: bold; margin: 24pt 0 12pt 0; }
+        h2 { font-size: 16pt; font-weight: bold; margin: 18pt 0 6pt 0; }
+        h3 { font-size: 14pt; font-weight: bold; margin: 12pt 0 6pt 0; }
+        h4 { font-size: 12pt; font-weight: bold; margin: 12pt 0 3pt 0; }
+        p { margin: 0 0 12pt 0; }
+        ul, ol { margin: 6pt 0 6pt 24pt; }
+        li { margin: 3pt 0; }
+    </style>
+</head>
+<body>
+${htmlContent}
+</body>
+</html>`;
+            return wordDoc;
+        }
+
+        function setupDownload() {
+            const downloadBtn = document.getElementById('downloadBtn');
+            const blob = new Blob([convertedContent], { 
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+            });
+            const url = URL.createObjectURL(blob);
+            
+            downloadBtn.href = url;
+            downloadBtn.download = 'converted_document.doc';
+            downloadBtn.style.display = 'inline-block';
+            
+            // Clean up URL after download
+            downloadBtn.addEventListener('click', function() {
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            });
+        }
+
+        // Sample LaTeX content for demonstration
+        window.addEventListener('load', function() {
+            const sampleTex = `\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+\\title{サンプル文書}
+\\author{作者名}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+
+\\section{はじめに}
+これはLaTeXからWordへの変換のサンプル文書です。この変換ツールは基本的なLaTeXコマンドをサポートしています。
+
+\\subsection{対応機能}
+以下の機能がサポートされています：
+\\begin{itemize}
+\\item セクションとサブセクション
+\\item テキストの書式設定（\\textbf{太字}、\\textit{斜体}など）
+\\item 数式の変換
+\\item リストの作成
+\\item アクセント記号の変換
+\\end{itemize}
+
+\\section{アクセント記号の例}
+LaTeXのアクセント記号が正しく変換されます：
+\\begin{itemize}
+\\item マクロン: \\={a}, \\={e}, \\={i}, \\={o}, \\={u} → ā, ē, ī, ō, ū
+\\item アキュート: \\'{a}, \\'{e}, \\'{i}, \\'{o}, \\'{u} → á, é, í, ó, ú
+\\item グレーブ: \\`{a}, \\`{e}, \\`{i}, \\`{o}, \\`{u} → à, è, ì, ò, ù
+\\item サーカムフレックス: \\^{a}, \\^{e}, \\^{i}, \\^{o}, \\^{u} → â, ê, î, ô, û
+\\item ウムラウト: \\"{a}, \\"{o}, \\"{u} → ä, ö, ü
+\\item チルダ: \\~{a}, \\~{n}, \\~{o} → ã, ñ, õ
+\\item チェコ語: \\v{c}, \\v{s}, \\v{z} → č, š, ž
+\\item 特殊文字: \\ae, \\o, \\ss, \\l → æ, ø, ß, ł
+\\end{itemize}
+
+\\section{数式の例}
+アインシュタインの質量エネルギー等価性：
+\\begin{equation}
+E = mc^2
+\\end{equation}
+
+インライン数式の例：$a^2 + b^2 = c^2$
+
+\\section{まとめ}
+この変換ツールを使用して、LaTeX文書を簡単にWord形式に変換できます。アクセント記号も適切に処理されます。
+
+\\end{document}`;
+            
+            document.getElementById('texInput').value = sampleTex;
+        });
+    </script>
+</body>
+</html>
