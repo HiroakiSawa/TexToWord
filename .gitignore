@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+.pytest_cache/
+
+# TeX build artifacts
+*.aux
+*.log
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*.toc
+*.out
+*.fls
+*.fdb_latexmk
+*.xdv
+biber.out
+# reledmac / reledpar auxiliary files
+*.[0-9]
+*.[0-9]R
+*.[A-E]end
+*.eledsec*
+
+# Generated outputs of the sample documents
+samples/**/main.pdf
+samples/**/main.txt
+out/

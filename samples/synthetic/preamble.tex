@@ -1,0 +1,106 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% preamble.tex (synthetic test copy)
+% 実原稿のプリアンブルを複製し、以下だけ変更した:
+%   - Font/ 同梱フォント (Scheherazade New) の代わりに TeX Live 同梱の Amiri を使用
+%   - Greek は Path=Font/ ではなくシステムの Noto Serif
+%   - ヘブライ語の検証用に \setotherlanguage{hebrew} を追加
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+
+\usepackage[hang]{footmisc}
+\renewcommand{\hangfootparindent}{0pt}
+\renewcommand{\footnotemargin}{2em}
+
+\usepackage{reledmac}
+\usepackage{reledpar}
+\usepackage{color}
+\usepackage{soul}
+
+\usepackage{bidi}
+
+\usepackage{semtrans}
+
+\setmainlanguage{english}
+\setmainfont{Times New Roman}
+\setotherlanguage[variant=ancient]{greek}
+\newfontfamily\greekfont{Noto Serif}
+\setotherlanguage{arabic}
+\newfontfamily\arabicfont[Script=Arabic,numerals=mashriq]{Amiri}
+\setotherlanguage{hebrew}
+\newfontfamily\hebrewfont[Script=Hebrew]{Times New Roman}
+
+\usepackage[bibstyle=manuscripts,citestyle=authoryear]{biblatex}
+\addbibresource{Ref.bib}
+\usepackage{xurl}
+\emergencystretch=3em
+
+\author{Hiroaki SAWA}
+\date{\empty}
+
+\renewcommand{\figurename}{Fig.~}
+\setcounter{secnumdepth}{3}
+\renewcommand{\thepage}{\arabic{page}}
+
+\usepackage{enumitem}
+\setlist{itemsep=1ex, leftmargin=1cm}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyfoot[C]{\thepage}
+
+\usepackage[a4paper,margin=1.5in]{geometry}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{tikz-cd}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+
+\usepackage{lscape}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{booktabs}
+
+\usepackage{setspace}
+\doublespacing
+
+\usepackage{xspace}
+\usepackage{cleveref}
+
+%Works
+\newcommand{\jaw}{\textit{Jaw\={a}mi`}\xspace}
+\newcommand{\ods}{\textit{On Diseases and Symptoms}\xspace}
+\newcommand{\ishaqtarih}{\textit{Ta'r\={\i}\U{h}}\xspace}
+\newcommand{\qiftitarikh}{\textit{Ta'r\={\i}\U{h} al-a\d{t}ibb\={a}'}\xspace}
+\newcommand{\fihrist}{\textit{Fihrist}\xspace}
+
+%Personal Name
+\newcommand{\hunayn}{\d{H}unayn\xspace}
+\newcommand{\ishaq}{Is\d{h}\={a}q\xspace}
+\newcommand{\hubaysh}{\d{H}ubay\v{s}\xspace}
+\newcommand{\usaybia}{U\d{s}aybi`ah\xspace}
+\newcommand{\qifti}{al-Qif\d{t}\={\i}\xspace}
+\newcommand{\ali}{`Al\={\i}\xspace}
+\newcommand{\thabit}{\b{T}\={a}bit\xspace}
+\newcommand{\dimashqi}{al-Dima\v{s}q\={\i}\xspace}
+%Greek
+\newcommand{\Peri}{Περ\`{ι}\xspace}
+%Arabic transliteration
+\newcommand{\Fi}{F{\={\i}}\xspace}
+\newcommand{\kha}{\U{h}\xspace}
+\newcommand{\thaa}{\b{t}\xspace}
+\newcommand{\Jim}{\v{G}\xspace}
+
+%校訂本文(reledmac)用マクロ
+\newcommand{\witness}{\emph}
+\Xinplaceoflemmaseparator{0pt}
+\Xlemmaseparator[A]{]~}
+\Xlemmaseparator[B]{]~}
+\renewcommand{\footfudgefiddle}{250}
+\Xarrangement[A]{paragraph}
+\Xarrangement[B]{normal}
+\setcounter{ballast}{100}
+
+\newcommand{\ifdraft}{false}

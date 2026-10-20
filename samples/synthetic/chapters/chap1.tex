@@ -1,0 +1,100 @@
+\documentclass[../main.tex]{subfiles}
+\begin{document}
+
+\chapter{The Translators and Their Works}\label{chap:translators}
+
+\section{Transliteration}\label{sec:translit}
+
+% A comment that must not appear in the output.
+The school of \hunayn ibn \ishaq produced the \jaw, as reported by
+\usaybia and \qifti in his \qiftitarikh. \ishaq's\footnote{Note the
+possessive after a macro with \texttt{xspace}.} contemporary \thabit
+ibn Qurrah, and \hubaysh al-A`sam, worked under al-Ma'm\={u}n.
+\ali ibn Ri\d{d}w\={a}n wrote against \dimashqi.
+Raw forms: al-\v{s}ay\U{h}, \d{h}ad\={\i}\b{t}, \={I}s\={a}, \.{g}ayr,
+\kha\={a}\thaa{} and \Jim al\={\i}n\=us; \Fi al-\d{t}ibb.
+
+\section{Languages}\label{sec:languages}
+
+Galen's treatise \textgreek{\Peri αἱρέσεων τοῖς εἰσαγομένοις} (\textit{De sectis})
+was known in Arabic as \textarabic{كتاب الفرق} (\textit{Kit\={a}b al-Firaq}),
+see \cref{sec:translit} and \cref{tab:witnesses} on p.~\pageref{tab:witnesses}.
+The Hebrew version reads \texthebrew{ספר הכתות} in one witness.\footnote{A
+footnote with Arabic: \textarabic{قال جالينوس} (\textit{q\={a}la
+\v{G}\={a}l\={\i}n\=us}), and Greek \foreignlanguage{greek}{Γαληνός}.}
+
+\begin{Arabic}
+قال حنين بن إسحاق: إن كتب جالينوس في الطب كثيرة (١٦ كتابا)، وقد ترجمتها إلى العربية.
+\end{Arabic}
+
+An English paragraph follows the Arabic block, with an inline RTL phrase
+at the end of a sentence: the term is \textarabic{جوامع}.
+
+\subsection{Citations}
+
+As \textcite{Ullmann1970} showed, the summaries circulated
+widely.\footnote{\cite[59]{Ullmann1970}; see also
+\cite[cf.][123--125]{SavageSmith2002}.} Later scholarship
+\parencite[e.g.][12]{Koetschet2019} confirms this
+\autocite{Pormann2026}.\footcite[\textarabic{ص}~٣٤]{Ibn-Abi-Usaybia}
+The Paris manuscript \cite{MS-Paris-2860} preserves the text.
+
+\subsubsection{Draft markup}
+
+Some text is \hl{highlighted} and some is \textcolor{red}{red}.
+An undefined macro \unknownmacro{with argument} must survive.
+
+\begin{itemize}
+\item First item with \emph{emphasis}.
+\item Second item with \textbf{bold}.
+\end{itemize}
+
+\section{Tables, Mathematics and Figures}
+
+\begin{table}[ht]
+\centering
+\caption{Witnesses of the \jaw}\label{tab:witnesses}
+\begin{tabular}{lll}
+\toprule
+Siglum & Library & Shelfmark \\
+\midrule
+\multirow{2}{*}{P} & \multicolumn{2}{c}{Paris, BnF} \\
+ & arabe & 2860 \\
+I & \textarabic{إسطنبول} & Aya Sofya 3593 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{longtable}{p{3cm}p{8cm}}
+\caption{Long list of terms}\label{tab:terms}\\
+\toprule
+Greek & Arabic \\
+\midrule
+\endhead
+\textgreek{αἵρεσις} & \textarabic{فرقة} \\
+\textgreek{ἐμπειρία} & \textarabic{تجربة} \\
+\bottomrule
+\end{longtable}
+
+Inline mathematics $a^2 + b^2 = c^2$ and a display:
+\begin{equation}\label{eq:humours}
+H = \sum_{i=1}^{4} \frac{q_i}{\sqrt{t}}
+\end{equation}
+as in \cref{eq:humours}.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{figures/stemma.pdf}
+\caption{Stemma codicum}\label{fig:stemma}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzcd}
+\omega \arrow[r] \arrow[d] & P \\
+\alpha \arrow[r] & I
+\end{tikzcd}
+\caption{Transmission diagram (tikz-cd)}\label{fig:tikzcd}
+\end{figure}
+
+\end{document}
