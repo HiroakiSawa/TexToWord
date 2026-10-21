@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from dataclasses import dataclass
@@ -36,10 +37,17 @@ def compile_document(main: Path, build: Path, deps: list[Path], tools: dict[str,
     timeout = int(cfg["compile"].get("timeout", 1200))
     runs = max(1, int(cfg["compile"].get("runs", 3)))
 
+    # reledmac/reledpar re-read their line lists (\jobname.1, ...) via \openin, which does not
+    # look in -output-directory; put the build dir first so stale files next to the source
+    # are never picked up either.
+    env = dict(os.environ)
+    env["TEXINPUTS"] = os.pathsep.join([str(build), ".", env.get("TEXINPUTS", "")])
+
     def latex_once() -> None:
         try:
             run(xelatex.cmd("-interaction=nonstopmode", "-file-line-error",
-                            f"-output-directory={build}", main.name), cwd=main.parent, timeout=timeout)
+                            f"-output-directory={build}", main.name), cwd=main.parent, timeout=timeout,
+                env=env)
         except subprocess.TimeoutExpired:
             diag.error("compile", f"xelatex が {timeout} 秒以内に終了しませんでした")
 

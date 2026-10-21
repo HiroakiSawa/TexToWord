@@ -91,6 +91,10 @@ apparatus:
   # 欄外注（\ledsidenote など）の接頭辞
   sidenote_prefix: "[margin]"
 
+footnotes:
+  # 注番号が連続するとき（例: A 層と B 層の注が同じ lemma に付く場合）に間に入れる上付き文字。"" で無効
+  adjacent_separator: ","
+
 # reledpar の対訳: interleave（原文段落 → 訳文段落の交互）| table（2 列の表）| sequential（原文全体 → 訳文全体）
 parallel:
   layout: interleave

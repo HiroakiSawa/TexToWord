@@ -261,6 +261,7 @@ class PostStats:
     highlighted: int = 0
     unconverted: int = 0
     needs_review: int = 0
+    separators: int = 0
 
 
 class PostProcessor:
@@ -463,6 +464,25 @@ class PostProcessor:
     def _is_rtl_lang(code: str) -> bool:
         return code.split("-")[0].lower() in {"ar", "he", "fa", "ur", "syr", "yi", "ps", "dv", "ug", "ckb"}
 
+    def separate_adjacent_refs(self, root) -> None:
+        sep = (self.cfg.get("footnotes") or {}).get("adjacent_separator", ",")
+        if not sep:
+            return
+        is_ref = lambda el: el is not None and el.tag == q("r") and el.find(q("footnoteReference")) is not None
+        for run in list(root.iter(q("r"))):
+            nxt = run.getnext()
+            if is_ref(run) and is_ref(nxt):
+                new = etree.Element(q("r"))
+                rpr = run.find(q("rPr"))
+                if rpr is not None:
+                    new.append(copy.deepcopy(rpr))
+                else:
+                    set_child(get_rpr(new), "vertAlign", RPR_ORDER, {"val": "superscript"})
+                t = etree.SubElement(new, q("t"))
+                t.text = sep
+                run.addnext(new)
+                self.stats.separators += 1
+
     def _captions_and_highlights(self, root) -> None:
         cap = self.style_ids.get(self.cfg["styles"]["caption"], "Caption")
         for ps in root.iter(q("pStyle")):
@@ -510,6 +530,7 @@ def postprocess_docx(src: Path, dst: Path, cfg: dict, plan: FontPlan, main_lang:
     pp.process_styles(styles, used)
     for n, root in roots.items():
         pp.process_part(root)
+        pp.separate_adjacent_refs(root)
         data[n] = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
     data["word/styles.xml"] = etree.tostring(styles, xml_declaration=True, encoding="UTF-8", standalone=True)
     fd, tmp_name = tempfile.mkstemp(suffix=".docx", dir=dst.parent)

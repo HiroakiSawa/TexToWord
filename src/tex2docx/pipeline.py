@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
-from . import langs, macros, refs, translit
+from . import langs, macros, refs, reledmac, translit
 from .compile import compile_document
 from .diagnostics import Diagnostics
 from .flatten import FlatDocument, flatten
@@ -134,6 +134,9 @@ def preprocess(doc: FlatDocument, cfg: dict, aux: refs.AuxData, markers: Markers
 
     structure = refs.Structure(body, aux, cfg, doc.preamble, markers, diag, doc.has_chapters)
     body = structure.apply()
+    body, astats = reledmac.transform_apparatus(body, cfg, markers, diag)
+    if astats:
+        stats["校訂注"] = dict(astats)
     return body, titles, source_text, expanded
 
 

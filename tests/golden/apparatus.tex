@@ -1,0 +1,41 @@
+\documentclass{article}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\usepackage{reledmac}
+\usepackage{reledpar}
+\setmainlanguage{english}
+\setotherlanguage{arabic}
+\newcommand{\witness}{\emph}
+\begin{document}
+\beginnumbering
+\pstart
+Galen says that the \edtext{sects}{\Afootnote{schools \witness{P}}} are
+\edtext{three}{\Afootnote{two \witness{I}}\Bfootnote{Source note}}.
+\pend
+\endnumbering
+
+\begin{Arabic}
+\beginnumbering
+\pstart
+\edtext{وأما أصحاب \edtext{التجربة}{\Afootnote{التجارب \witness{I}}} فإنهم يقولون}{\lemma{وأما \ldots{} يقولون}\Afootnote{om. \witness{P}}}
+إن الطب يستخرج بالتجربة.
+\pend
+\endnumbering
+\end{Arabic}
+
+\begin{pairs}
+\begin{Leftside}
+\beginnumbering
+\pstart Left one \pend
+\pstart Left two \pend
+\endnumbering
+\end{Leftside}
+\begin{Rightside}
+\beginnumbering
+\pstart Right one \pend
+\pstart Right two \pend
+\endnumbering
+\end{Rightside}
+\end{pairs}
+\Columns
+\end{document}

@@ -467,7 +467,7 @@ class Structure:
                     self.diag.info("pageref", f"\\{name}{{{key}}} を節番号 {out} に置き換えました", ctx)
             elif name in ("edlineref", "lineref", "sublineref"):
                 lab = self.aux.edlabels.get(key)
-                if lab:
+                if lab and lab[1].isdigit() and int(lab[1]) > 0:
                     out = self.markers.char(refcfg["edlineref_format"].format(n=lab[1]), review,
                                             highlight=True, kind="edlineref")
                     self.diag.warning("edlineref",
