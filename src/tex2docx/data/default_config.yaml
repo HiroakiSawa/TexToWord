@@ -1,0 +1,259 @@
+# tex2docx 既定設定。ユーザー設定（--config）はこの内容に上書きマージされる。
+
+# Word のスタイルテンプレート。null なら同梱の reference.docx。出版社テンプレートを指定してもよい
+# （足りないスタイルは変換時に自動で追加される）。
+reference_docx: null
+
+# 外部ツールのパス。null なら PATH から探す。
+tools:
+  pandoc: null
+  xelatex: null
+  biber: null
+  make4ht: null
+  pdftotext: null
+  ghostscript: null
+  inkscape: null
+
+# 相互参照の番号と比較用 PDF を得るために、元の文書を xelatex でコンパイルする。
+compile:
+  enabled: true
+  engine: xelatex
+  runs: 3            # reledmac は 3 回以上必要
+  timeout: 1200      # 秒（1 回のコンパイルあたり）
+
+fonts:
+  # 変換を実行する OS ではなく、校閲者の OS を想定して代替フォントを選ぶ場合に指定する
+  # auto | windows | macos
+  target_os: auto
+  # Word で使うフォント名。null なら fontspec の設定（\setmainfont, \newfontfamily\arabicfont など）から推定する。
+  main: null
+  scripts:
+    arabic: null
+    hebrew: null
+    greek: null
+  # 推定・指定したフォントがその OS に無いときの代替。キーは TeX 側のフォント名。
+  substitutes:
+    "Scheherazade New": {windows: "Traditional Arabic", macos: "Geeza Pro"}
+    "Amiri": {windows: "Traditional Arabic", macos: "Geeza Pro"}
+    "Noto Serif": {windows: "Times New Roman", macos: "Times New Roman"}
+    "SBL Hebrew": {windows: "Times New Roman", macos: "Times New Roman"}
+    "Ezra SIL": {windows: "Times New Roman", macos: "Times New Roman"}
+  # fontspec 設定から何も得られなかったときの既定値
+  defaults:
+    main: "Times New Roman"
+    arabic: {windows: "Traditional Arabic", macos: "Geeza Pro"}
+    hebrew: {windows: "Times New Roman", macos: "Times New Roman"}
+    greek: {windows: "Times New Roman", macos: "Times New Roman"}
+    # 和文（「未変換」の目印など）に使う東アジア用フォント
+    east_asian: {windows: "Yu Mincho", macos: "Hiragino Mincho ProN"}
+  # 本文サイズに対する RTL 文字の表示倍率（%）。アラビア文字は同じポイント数だと小さく見えるため。
+  size_percent:
+    arabic: 125
+    hebrew: 110
+
+# polyglossia の言語名 → Word の言語コード
+languages:
+  english: en-US
+  british: en-GB
+  american: en-US
+  german: de-DE
+  french: fr-FR
+  italian: it-IT
+  spanish: es-ES
+  latin: la
+  greek: el-GR
+  arabic: ar-SA
+  persian: fa-IR
+  farsi: fa-IR
+  urdu: ur-PK
+  syriac: syr-SY
+  hebrew: he-IL
+  japanese: ja-JP
+  turkish: tr-TR
+  russian: ru-RU
+
+# 転写記号
+transliteration:
+  # 生の ` と ' をアイン・ハムザとして扱うか。convert | keep
+  ain_hamza: convert
+  ain: "ʿ"     # U+02BF
+  hamza: "ʾ"   # U+02BE
+  # 追加のアクセントマクロ（マクロ名 → 結合文字）。例: {"\\R": "̥"}
+  extra_accents: {}
+
+# reledmac 校訂注
+apparatus:
+  prefixes: {A: "[A]", B: "[B]", C: "[C]", D: "[D]", E: "[E]", Z: "[Z]"}
+  format: "{prefix} {lemma}] {note}"
+  format_no_lemma: "{prefix} {note}"
+  # 注の段落方向: auto（lemma の文字種で決める）| ltr | rtl
+  direction: auto
+  # 欄外注（\ledsidenote など）の接頭辞
+  sidenote_prefix: "[margin]"
+
+# reledpar の対訳: interleave（原文段落 → 訳文段落の交互）| table（2 列の表）| sequential（原文全体 → 訳文全体）
+parallel:
+  layout: interleave
+
+references:
+  # \pageref は Word のページと一致しないため、ラベル位置の節番号で表す
+  pageref: section
+  section_sign: "§"
+  # "p.~\pageref{x}" の "p." を取り除いて "§1.3" だけにする
+  pageref_absorb_prefix: true
+  # \edlineref は PDF の行番号を固定テキストで入れ、要確認ハイライトを付ける
+  edlineref_format: "PDF l. {n}"
+  edpageref_format: "PDF p. {n}"
+  unresolved_format: "[[未解決参照: {key}]]"
+
+headings:
+  # static: PDF と同じ番号を見出しの先頭に文字として入れる | none
+  numbering: static
+  formats:
+    part: "Part {n}. "
+    chapter: "Chapter {n}. "
+    default: "{n} "
+
+captions:
+  figure_name: "Figure"
+  table_name: "Table"
+  format: "{name} {n}: "
+
+equations:
+  numbering: static
+
+citations:
+  # oracle: biblatex の実際の整形結果を make4ht で取得して使う | none
+  method: oracle
+  # 引用整形用文書で .bib 内の ` ' にも同じアイン・ハムザ変換をかける
+  convert_bib_ain_hamza: true
+
+figures:
+  dpi: 300
+  # PDF → PNG 変換手段の優先順
+  pdf_converters: [pypdfium2, ghostscript, inkscape]
+  # tikzpicture / tikzcd を単独コンパイルして画像化する
+  render_tikz: true
+
+macros:
+  expand_user_macros: true
+  # \renewcommand で再定義されたマクロのうち、本文で展開するもの（既定ではレイアウト用とみなして展開しない）
+  expand_renewed: []
+  # マクロ名 → 置換テキスト（LaTeX として解釈される）
+  replace:
+    LaTeX: "LaTeX"
+    TeX: "TeX"
+    XeLaTeX: "XeLaTeX"
+    ldots: "…"
+    dots: "…"
+    textellipsis: "…"
+  # 出力から黙って取り除いてよいマクロ（レイアウト専用）。取り除いた件数はログに残る。
+  ignore:
+    - maketitle
+    - tableofcontents
+    - listoffigures
+    - listoftables
+    - clearpage
+    - cleardoublepage
+    - newpage
+    - pagebreak
+    - nopagebreak
+    - linebreak
+    - nolinebreak
+    - noindent
+    - indent
+    - centering
+    - raggedright
+    - raggedleft
+    - smallskip
+    - medskip
+    - bigskip
+    - vspace
+    - hspace
+    - vfill
+    - hfill
+    - par
+    - relax
+    - protect
+    - singlespacing
+    - onehalfspacing
+    - doublespacing
+    - FloatBarrier
+    - frontmatter
+    - mainmatter
+    - backmatter
+    - appendix
+    - pagestyle
+    - thispagestyle
+    - setcounter
+    - addtocounter
+    - setlength
+    - addtolength
+    - addcontentsline
+    - selectlanguage
+    - small
+    - footnotesize
+    - scriptsize
+    - tiny
+    - normalsize
+    - large
+    - Large
+    - LARGE
+    - huge
+    - Huge
+    - xspace
+    - label
+    - phantomsection
+    - nocite
+    - setRTL
+    - setLTR
+    - unsetRTL
+    - unsetLTR
+    - beginnumbering
+    - endnumbering
+    - autopar
+    - Columns
+    - Pages
+    - AtBeginDocument
+  # 中身を残して外側だけ取り除く環境（レイアウト用）
+  transparent_environments:
+    - center
+    - flushleft
+    - flushright
+    - landscape
+    - spacing
+    - singlespace
+    - onehalfspace
+    - doublespace
+    - minipage
+    - RTL
+    - LTR
+
+verify:
+  pdf_compare: true
+  max_listed: 50
+
+# docx 側のスタイル名（reference.docx に定義済み）
+styles:
+  unconverted: "Unconverted"
+  needs_review: "Needs Review"
+  section_number: "Section Number"
+  bibliography: "Bibliography"
+  caption: "Caption"
+  rtl_variants:
+    BodyText: "BodyTextRTL"
+    FirstParagraph: "BodyTextRTL"
+    Compact: "BodyTextRTL"
+    BlockText: "BlockTextRTL"
+    FootnoteText: "FootnoteTextRTL"
+    Bibliography: "BibliographyRTL"
+  script_char_styles:
+    arabic: "Arabic Text"
+    hebrew: "Hebrew Text"
+    greek: "Greek Text"
+  # RTL 文字が LTR 文字より多い段落を RTL 段落にする
+  rtl_paragraph_ratio: 0.5
+
+# バッチ処理で除外するディレクトリ名
+batch:
+  exclude_dirs: [".git", ".venv", "node_modules", "__pycache__", "_minted"]

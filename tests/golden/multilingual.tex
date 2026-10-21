@@ -1,0 +1,23 @@
+\documentclass{article}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\usepackage{xspace}
+\setmainlanguage{english}
+\setotherlanguage[variant=ancient]{greek}
+\setotherlanguage{arabic}
+\setotherlanguage{hebrew}
+\newcommand{\hunayn}{\d{H}unayn\xspace}
+\newcommand{\ishaqtarih}{\textit{Ta'r\={\i}\U{h}}\xspace}
+\newcommand{\ali}{`Al\={\i}\xspace}
+\begin{document}
+\section{Languages}
+% a comment that must disappear
+\hunayn's school and \ali wrote the \ishaqtarih. Greek \textgreek{Περὶ αἱρέσεων}
+and Arabic \textarabic{كتاب الفرق} (\textit{Kit\={a}b al-Firaq}) and Hebrew
+\texthebrew{ספר הכתות}.\footnote{Footnote with \textarabic{قال جالينوس}.}
+An undefined \unknownmacro{kept text} stays visible.
+
+\begin{Arabic}
+قال حنين بن إسحاق: إن كتب جالينوس كثيرة (١٦ كتابا).
+\end{Arabic}
+\end{document}
