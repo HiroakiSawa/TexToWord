@@ -72,7 +72,14 @@ def write_document_report(path: Path, result) -> None:
     path.write_text("\n".join(L) + "\n", encoding="utf-8")
 
 
-def _row(result) -> dict:
+def summary_row(result) -> dict:
+    previous = getattr(result, "previous", None)
+    if result.status == "skipped" and previous:
+        row = dict(previous)
+        row["status"] = "skipped"
+        row["seconds"] = "0.0"
+        row["prev_status"] = previous.get("status", "")
+        return row
     checks = {c.name: c for c in result.checks}
     fn = checks.get("脚注数")
     cov = checks.get("PDF とのテキスト網羅性")
@@ -86,13 +93,13 @@ def _row(result) -> dict:
         "warnings": result.diag.count("warning"),
         "errors": result.diag.count("error"),
         "seconds": f"{result.seconds:.1f}",
-        "report": result.report_path.name if result.report_path else "",
+        "report": Path(result.rel).with_suffix(".report.md").as_posix() if result.report_path else "",
         "error": result.error or "",
     }
 
 
 def write_batch_summary(out_dir: Path, results: list) -> tuple[Path, Path]:
-    rows = [_row(r) for r in results]
+    rows = [summary_row(r) for r in results]
     counts = Counter(r["status"] for r in rows)
     md = ["# tex2docx 一括変換サマリー\n",
           f"- 文書数: {len(rows)}（✅ {counts.get(OK, 0)} / ⚠️ {counts.get(WARN, 0)} / ❌ {counts.get(FAIL, 0)} / "

@@ -36,6 +36,7 @@ class DocResult:
     error: str | None = None
     report_path: Path | None = None
     deps: list[Path] = field(default_factory=list)
+    previous: dict | None = None
 
 
 ENV_MANDATORY_ARGS = {"minipage": 1, "spacing": 1, "adjustwidth": 2}
@@ -271,6 +272,8 @@ def convert_document(main: Path, input_root: Path, out_dir: Path, cfg: dict, too
                 checks.append(verify.Check("PDF とのテキスト網羅性", verify.SKIP,
                                            "PDF または pdftotext が無いため未実施"))
         result.checks = checks
+        diag.stats["未変換（ハイライト）"] = len(verify.styled_items(content, cfg["styles"]["unconverted"]))
+        diag.stats["要確認（ハイライト）"] = len(verify.styled_items(content, cfg["styles"]["needs_review"]))
         result.status = overall_status(checks, diag.count("error"))
     except Exception as exc:  # isolate failures per document
         result.error = f"{type(exc).__name__}: {exc}"

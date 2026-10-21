@@ -268,17 +268,23 @@ def check_glyphs(content: DocxContent, plan: FontPlan, limit: int) -> Check:
     return Check("グリフ", OK if not unknown else WARN, f"指定フォントで表示できない文字なし{note}")
 
 
-def check_unconverted(content: DocxContent, cfg: dict, limit: int) -> Check:
-    unconv_style = cfg["styles"]["unconverted"]
+def styled_items(content: DocxContent, style: str) -> list[str]:
+    """Texts of consecutive runs (within one paragraph) carrying ``style``."""
     items: list[str] = []
     prev = None
     for r in content.runs:
-        if r.style == unconv_style:
-            if prev is not None and prev.style == unconv_style and prev.para == r.para:
+        if r.style == style:
+            if prev is not None and prev.style == style and prev.para == r.para and prev.part == r.part:
                 items[-1] += r.text
             else:
                 items.append(r.text)
         prev = r
+    return items
+
+
+def check_unconverted(content: DocxContent, cfg: dict, limit: int) -> Check:
+    unconv_style = cfg["styles"]["unconverted"]
+    items = styled_items(content, unconv_style)
     residual = []
     for r in content.runs:
         if r.style == unconv_style:
@@ -331,7 +337,7 @@ def check_pdf_coverage(content: DocxContent, ptext: str | None, limit: int) -> C
     rate = 100.0 * (total - miss_n) / total if total else 100.0
     summary = f"ラテン・ギリシア文字の語 {total} 語中 {total - miss_n} 語が docx に存在（{rate:.1f}%）。欠落の疑い {miss_n} 語、重複の疑い {len(dup)} 種"
     status = OK if miss_n == 0 and not dup else WARN
-    if rate < 95:
+    if miss_n >= max(10, 0.05 * total):
         status = FAIL
     return Check("PDF とのテキスト網羅性", status, summary, details)
 

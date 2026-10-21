@@ -12,7 +12,7 @@ from . import __version__
 from .config import config_fingerprint
 from .flatten import clean_source, read_text
 from .pipeline import DocResult, convert_document
-from .report import write_batch_summary
+from .report import summary_row, write_batch_summary
 from .tools import Tool
 
 NON_MAIN_CLASSES = {"subfiles", "standalone"}
@@ -85,11 +85,12 @@ def save_state(out_dir: Path, state: dict) -> None:
     p.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def _skipped(main: Path, rel: str, out_dir: Path) -> DocResult:
+def _skipped(main: Path, rel: str, out_dir: Path, prev: dict) -> DocResult:
     r = DocResult(main=main, rel=rel, status="skipped")
     r.output = out_dir / Path(rel).with_suffix(".docx")
     r.report_path = r.output.with_suffix(".report.md")
     r.error = None
+    r.previous = prev.get("row")
     return r
 
 
@@ -112,7 +113,7 @@ def run_batch(input_path: Path, out_dir: Path, cfg: dict, tools: dict[str, Tool]
         if not force and prev and out_docx.exists() and prev.get("status") != "fail" and \
                 prev.get("fingerprint") == fingerprint(prev.get("deps", []), cfg, tools):
             progress(f"[スキップ] {rel}（変更なし）")
-            results.append(_skipped(m, rel, out_dir))
+            results.append(_skipped(m, rel, out_dir, prev))
         else:
             todo.append(m)
     progress(f"{len(mains)} 文書中 {len(todo)} 文書を変換します（並列数 {jobs}）")
@@ -120,7 +121,7 @@ def run_batch(input_path: Path, out_dir: Path, cfg: dict, tools: dict[str, Tool]
     def record(res: DocResult) -> None:
         deps = [str(p) for p in res.deps]
         state[res.rel] = {"fingerprint": fingerprint(deps, cfg, tools), "deps": deps,
-                          "status": res.status}
+                          "status": res.status, "row": summary_row(res)}
         save_state(out_dir, state)
         progress(f"[{res.status}] {res.rel}（{res.seconds:.1f} 秒）" + (f" — {res.error}" if res.error else ""))
         results.append(res)

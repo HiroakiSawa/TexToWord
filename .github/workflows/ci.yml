@@ -1,0 +1,63 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install pandoc
+        uses: pandoc/actions/setup@v1
+        with:
+          version: "3.5"
+
+      - name: Install TeX Live (packages used by the golden tests)
+        uses: TeX-Live/setup-texlive-action@v3
+        with:
+          packages: |
+            scheme-basic
+            amsmath
+            bidi
+            biber
+            biblatex
+            booktabs
+            etoolbox
+            fontspec
+            graphics
+            l3packages
+            lm
+            make4ht
+            multirow
+            pgf
+            polyglossia
+            reledmac
+            standalone
+            tex4ht
+            tikz-cd
+            xetex
+            xkeyval
+            xspace
+            xstring
+
+      - name: Install tex2docx
+        run: python -m pip install -e ".[dev]"
+
+      - name: Check external tools
+        run: tex2docx check-tools
+
+      - name: Run tests
+        run: python -m pytest -q
