@@ -33,6 +33,8 @@ def test_citations_rendered_by_biblatex(convert):
     _needs_oracle(convert)
     res, docx = convert("citations.tex")
     text = docx.text()
+    errors = [f"{e.message} :: {e.context}" for e in res.diag.entries if e.level == "error"]
+    assert not errors, errors
     assert "As Ullmann (1970) showed." in text
     assert "(e.g. Koetschet 2019, p. 12)" in text
     notes = docx.footnote_texts()

@@ -38,7 +38,14 @@ jobs:
             etoolbox
             fontspec
             graphics
+            iftex
+            kvoptions
             l3packages
+            logreq
+            luaxml
+            pdftexcmds
+            url
+            csquotes
             lm
             make4ht
             multirow

@@ -26,7 +26,7 @@ class Diagnostics:
     def add(self, level: str, category: str, message: str, context: str = "") -> None:
         if level not in LEVELS:
             raise ValueError(level)
-        self.entries.append(Entry(level, category, message, context[:300]))
+        self.entries.append(Entry(level, category, message, context[:1000 if level == "error" else 300]))
 
     def info(self, category: str, message: str, context: str = "") -> None:
         self.add("info", category, message, context)

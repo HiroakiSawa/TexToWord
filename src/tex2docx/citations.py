@@ -405,8 +405,20 @@ def run_oracle(occurrences: list[CiteOccurrence], documentclass: str, preamble: 
     m4h = tools["make4ht"]
     timeout = int(cfg["compile"].get("timeout", 1200))
 
+    last_proc = {}
+
     def make4ht() -> None:
-        run(m4h.cmd("-x", "-u", "-d", "out", "oracle.tex"), cwd=work, timeout=timeout)
+        last_proc["p"] = run(m4h.cmd("-x", "-u", "-d", "out", "oracle.tex"), cwd=work, timeout=timeout)
+
+    def failure_detail() -> str:
+        log = work / "oracle.log"
+        lines = []
+        if log.exists():
+            lines = [l for l in log.read_text(encoding="utf-8", errors="replace").splitlines()
+                     if l.startswith("!") or "Error" in l][:8]
+        p = last_proc.get("p")
+        tail = (p.stdout + p.stderr)[-600:] if p is not None else ""
+        return " / ".join(lines) + (" || make4ht: " + tail if tail else "")
 
     make4ht()
     if (work / "oracle.bcf").exists():
@@ -422,7 +434,8 @@ def run_oracle(occurrences: list[CiteOccurrence], documentclass: str, preamble: 
     if not html_path.exists():
         html_path = work / "oracle.html"
     if not html_path.exists():
-        diag.error("citation", "make4ht が HTML を出力しませんでした。引用は未変換のまま残ります")
+        diag.error("citation", "make4ht が HTML を出力しませんでした。引用は未変換のまま残ります",
+                   failure_detail())
         return OracleResult({}, list(range(len(occurrences))))
     marked = html_to_marked_latex(html_path.read_text(encoding="utf-8", errors="replace"))
     repl: dict[int, str] = {}
@@ -440,6 +453,8 @@ def run_oracle(occurrences: list[CiteOccurrence], documentclass: str, preamble: 
             repl[i] = _bibliography(m.group(1), markers, cfg)
         else:
             repl[i] = _finish(m.group(1))
+    if missing:
+        diag.error("citation", f"引用整形用文書の出力に {len(missing)} 件の引用が見つかりません", failure_detail())
     return OracleResult(repl, missing)
 
 
