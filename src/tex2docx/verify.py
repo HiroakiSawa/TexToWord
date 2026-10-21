@@ -249,8 +249,14 @@ def check_glyphs(content: DocxContent, plan: FontPlan, limit: int) -> Check:
             c = char_class(ch)
             script = {"R-arabic": "arabic", "R-hebrew": "hebrew", "R-syriac": "syriac",
                       "L-greek": "greek"}.get(c)
-            if script is None and is_east_asian(ch):
-                script = "east_asian"
+            if script is None:
+                o = ord(ch)
+                if 0x0600 <= o <= 0x06FF or 0x0750 <= o <= 0x077F or 0xFB50 <= o <= 0xFDFF or 0xFE70 <= o <= 0xFEFF:
+                    script = "arabic"  # Arabic punctuation and harakat are shown in the Arabic font
+                elif 0x0590 <= o <= 0x05FF or 0xFB1D <= o <= 0xFB4F:
+                    script = "hebrew"
+                elif is_east_asian(ch):
+                    script = "east_asian"
             font = plan.for_script(script) if script else plan.main
             by_font.setdefault(font, set()).add(ch)
     details = []

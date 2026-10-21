@@ -107,6 +107,8 @@ def classify_chars(text: str, para_rtl: bool, para_script: str = "R-arabic") -> 
     prev = None
     for ch in text:
         c = char_class(ch)
+        if c == "N" and unicodedata.bidirectional(ch) == "EN":
+            c = "L"  # European digits stay left-to-right, so "pp. 131–132" is not reversed
         if c == "M":
             c = prev if prev not in (None, "N") else "N"
         classes.append(c)

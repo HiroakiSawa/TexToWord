@@ -21,10 +21,17 @@ PRIMITIVE_CONDITIONALS = {
 }
 
 
+ENCODINGS_SEEN: dict[Path, str] = {}
+
+
 def read_text(path: Path) -> str:
-    """Read UTF-8 TeX source, normalising CRLF/CR line endings and dropping a BOM."""
+    """Read TeX source (UTF-8, or UTF-16 with a BOM as XeTeX accepts), normalising line endings."""
     data = path.read_bytes()
-    text = data.decode("utf-8-sig", errors="strict")
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+        text = data.decode("utf-16")
+        ENCODINGS_SEEN[path] = "UTF-16"
+    else:
+        text = data.decode("utf-8-sig", errors="strict")
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
@@ -270,6 +277,15 @@ def flatten(main: Path, diag: Diagnostics) -> FlatDocument:
     else:
         preamble = fl.expand(text[m.end():b], root)
     body = fl.expand(text[b + len("\\begin{document}"):e], root)
+    early_end = body.find("\\end{document}")
+    if early_end >= 0:
+        # an \input file containing \end{document}: TeX stops reading there as well
+        diag.warning("include", "読み込んだファイルの中に \\end{document} があり、そこで本文が終わります（TeX と同じ扱い）",
+                     body[max(0, early_end - 80):early_end + 40])
+        body = body[:early_end]
+    for p in fl.files:
+        if p in ENCODINGS_SEEN:
+            diag.info("encoding", f"{p.name} は {ENCODINGS_SEEN[p]}（BOM 付き）として読み込みました")
     doc = FlatDocument(main=main, root=root, documentclass=documentclass,
                        class_options=options, preamble=preamble, body=body,
                        tex_files=list(fl.files))

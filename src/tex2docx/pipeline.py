@@ -151,7 +151,52 @@ def preprocess(doc: FlatDocument, cfg: dict, aux: refs.AuxData, markers: Markers
             stats["図"] = dict(fstats)
         if extra_deps is not None:
             extra_deps.extend(fdeps)
+    body = flag_broken_markup(body, markers, cfg, diag)
     return body, titles, source_text, expanded
+
+
+def flag_broken_markup(text: str, markers: Markers, cfg: dict, diag: Diagnostics) -> str:
+    """Unbalanced braces and stray ``#`` make pandoc abort; keep them visible for review instead."""
+    from .texscan import protected_spans
+    from .diagnostics import context_of
+    spans = protected_spans(text, commands=("url", "href", "path", "nolinkurl", "verb"))
+    style = cfg["styles"]["needs_review"]
+    repl: list[tuple[int, int, str]] = []
+    stack: list[int] = []
+    si = 0
+    i = 0
+    n = len(text)
+    while i < n:
+        while si < len(spans) and spans[si][1] <= i:
+            si += 1
+        if si < len(spans) and spans[si][0] <= i < spans[si][1]:
+            i = spans[si][1]
+            continue
+        c = text[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c == "{":
+            stack.append(i)
+        elif c == "}":
+            if stack:
+                stack.pop()
+            else:
+                repl.append((i, i + 1, markers.char("\\}", style, highlight=True, kind="stray-brace")))
+                diag.warning("markup", "対応する { の無い } を要確認として残しました", context_of(text, i))
+        elif c == "#":
+            j = i
+            while j < n and text[j] == "#":
+                j += 1
+            repl.append((i, j, markers.char("\\#" * (j - i), style, highlight=True, kind="stray-hash")))
+            diag.warning("markup", "TeX の本文では使えない # を要確認として残しました", context_of(text, i, j))
+            i = j
+            continue
+        i += 1
+    for pos in stack:
+        repl.append((pos, pos + 1, markers.char("\\{", style, highlight=True, kind="stray-brace")))
+        diag.warning("markup", "閉じられていない { を要確認として残しました", context_of(text, pos))
+    return replace_spans(text, repl)
 
 
 def pandoc_document(doc: FlatDocument, body: str, titles: dict[str, str]) -> str:
