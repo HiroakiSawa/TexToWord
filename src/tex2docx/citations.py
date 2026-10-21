@@ -71,6 +71,35 @@ def _class_has(cls: str, pattern: re.Pattern) -> bool:
     return any(pattern.match(tok) for tok in re.split(r"[\s\-]+", cls) if tok)
 
 
+# Characters the oracle fonts may lack (CJK, Arabic, ...) travel through TeX as ASCII
+# placeholders, so a missing glyph can never silently drop text (XeTeX discards
+# characters that are not in the current font) and tex4ht's bidi reordering is avoided.
+SAFE_RANGES = ((0x0000, 0x036F), (0x0370, 0x03FF), (0x1E00, 0x1FFF), (0x2000, 0x206F),
+               (0x20A0, 0x20CF), (0x2100, 0x214F))
+CODEPOINT = re.compile(r"TDXCP([0-9A-Fa-f]{2,6})X", re.I)
+
+
+def _safe_char(ch: str) -> bool:
+    o = ord(ch)
+    return any(a <= o <= b for a, b in SAFE_RANGES)
+
+
+def protect_chars(text: str) -> tuple[str, int]:
+    n = 0
+    out = []
+    for ch in text:
+        if _safe_char(ch):
+            out.append(ch)
+        else:
+            out.append(f"TDXCP{ord(ch):X}X")
+            n += 1
+    return "".join(out), n
+
+
+def restore_chars(text: str) -> str:
+    return CODEPOINT.sub(lambda m: chr(int(m.group(1), 16)), text)
+
+
 @dataclass
 class CiteOccurrence:
     start: int
@@ -266,7 +295,8 @@ def build_oracle(documentclass: str, preamble: str, occurrences: list[CiteOccurr
             body.append(occ.text)
             continue
         tag = "B" if occ.kind == "biblio" else "C"
-        cmd = f"\\tdxinfoot{{{occ.text}}}" if occ.in_footnote and occ.kind == "cite" else occ.text
+        text, _ = protect_chars(occ.text)
+        cmd = f"\\tdxinfoot{{{text}}}" if occ.in_footnote and occ.kind == "cite" else text
         body.append(f"\\par TDX{tag}B{i:05d}X {cmd} TDX{tag}E{i:05d}X\\par")
     return (f"\\documentclass{{{documentclass}}}\n{preamble}\n{ORACLE_SETUP}\n\\begin{{document}}\n"
             f"{ORACLE_BODY_SETUP}\n" + "\n".join(body) + "\n\\end{document}\n")
@@ -345,7 +375,7 @@ def _finish(fragment: str) -> str:
         text = text.replace(k, SENTINELS[k])
     text = re.sub(r"\\(emph|textbf|textsc|textsuperscript)\{\s*\}", "", text)
     text = re.sub(r"\\emph\{([^{}]*)\}\\emph\{", r"\\emph{\1", text)
-    return text.strip()
+    return restore_chars(text).strip()
 
 
 HEAD_LEVEL = {"likepartHead": "part", "likechapterHead": "chapter", "likesectionHead": "section",
@@ -395,7 +425,10 @@ def run_oracle(occurrences: list[CiteOccurrence], documentclass: str, preamble: 
             text, _ = translit.convert_ain_hamza(text, Diagnostics(), cfg["transliteration"]["ain"],
                                                  cfg["transliteration"]["hamza"])
         target = work / f"tdxbib{i}.bib"
-        target.write_text(translit.nfc(text), encoding="utf-8", newline="\n")
+        protected, n = protect_chars(translit.nfc(text))
+        if n:
+            diag.info("citation", f"{bib.name} の非ラテン文字 {n} 字を目印に置き換えて biblatex に渡しました")
+        target.write_text(protected, encoding="utf-8", newline="\n")
         rel = bib.relative_to(root).as_posix() if bib.is_relative_to(root) else bib.as_posix()
         bib_map[rel] = target.name
         bib_map[rel[:-4] if rel.endswith(".bib") else rel] = target.stem
@@ -455,6 +488,15 @@ def run_oracle(occurrences: list[CiteOccurrence], documentclass: str, preamble: 
             repl[i] = _finish(m.group(1))
     if missing:
         diag.error("citation", f"引用整形用文書の出力に {len(missing)} 件の引用が見つかりません", failure_detail())
+    broken = [r for r in repl.values() if "TDXCP" in r.upper()]
+    if broken:
+        diag.error("citation", "文字の目印を元に戻せなかった引用があります", broken[0][:200])
+    log = work / "oracle.log"
+    if log.exists():
+        lost = sorted(set(re.findall(r"Missing character: There is no (\S+)",
+                                     log.read_text(encoding="utf-8", errors="replace"))))
+        if lost:
+            diag.error("citation", "引用整形用文書で字形が無く失われた文字があります", " ".join(lost)[:300])
     return OracleResult(repl, missing)
 
 

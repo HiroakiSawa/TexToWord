@@ -252,10 +252,26 @@ def flatten(main: Path, diag: Diagnostics) -> FlatDocument:
     e = text.rfind("\\end{document}")
     if b < 0 or e < 0:
         raise FlattenError(f"{main.name} に \\begin{{document}} / \\end{{document}} がありません")
-    preamble = fl.expand(text[m.end():b], root)
+    documentclass, options = m.group(2).strip(), (m.group(1) or "").strip()
+    if documentclass == "subfiles":
+        # a chapter of a subfiles project converted on its own: the class and preamble
+        # come from the main file named in the class option, as when compiling it alone
+        target = _resolve(options, [root]) if options else None
+        if target is None:
+            raise FlattenError(f"{main.name} は subfiles の章ファイルですが、メイン文書 [{options}] が見つかりません")
+        main_text = fl.load(target)
+        mm = DOCCLASS.search(main_text)
+        mb = main_text.find("\\begin{document}")
+        if not mm or mb < 0:
+            raise FlattenError(f"メイン文書 {target.name} に \\documentclass / \\begin{{document}} がありません")
+        preamble = fl.expand(main_text[mm.end():mb], target.parent)
+        documentclass, options = mm.group(2).strip(), (mm.group(1) or "").strip()
+        diag.info("include", f"subfiles の章ファイルとして、{target.name} のプリアンブルで変換しました")
+    else:
+        preamble = fl.expand(text[m.end():b], root)
     body = fl.expand(text[b + len("\\begin{document}"):e], root)
-    doc = FlatDocument(main=main, root=root, documentclass=m.group(2).strip(),
-                       class_options=(m.group(1) or "").strip(), preamble=preamble, body=body,
+    doc = FlatDocument(main=main, root=root, documentclass=documentclass,
+                       class_options=options, preamble=preamble, body=body,
                        tex_files=list(fl.files))
     doc.bib_files = find_bib_files(preamble + body, root, diag)
     return doc

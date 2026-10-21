@@ -263,7 +263,8 @@ styles:
     arabic: "Arabic Text"
     hebrew: "Hebrew Text"
     greek: "Greek Text"
-  # RTL 文字が LTR 文字より多い段落を RTL 段落にする
+  # 段落で最初の強い方向の文字が RTL で、かつ RTL 文字の割合がこの値を超える段落を RTL 段落にする
+  # （RTL 言語の環境内のラテン文字は RTL として数える。アラビア語の校訂注などは前処理で明示的に RTL）
   rtl_paragraph_ratio: 0.5
 
 # バッチ処理で除外するディレクトリ名

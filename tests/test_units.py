@@ -108,3 +108,35 @@ def test_parse_aux(tmp_path):
     assert [(e.kind, e.number) for e in data.toc] == [("part", "I"), ("section", "1.2")]
     assert data.lot == ["1.1"]
     assert data.edlabels["ed:x"] == ("11", "4")
+
+
+def test_greek_accents_and_apostrophe():
+    d = Diagnostics()
+    out, _ = translit.convert_accents(r"Συν\'{ο}ψεις τ\~{ω}ν", d)
+    assert out == "Συνόψεις τῶν"
+    out, _ = translit.convert_ain_hamza("τῶν 'Αλεξανδρεῶν", d)
+    assert out == "τῶν 'Αλεξανδρεῶν"
+
+
+def test_below_accent_on_dotless_i_matches_tex():
+    d = Diagnostics()
+    out, _ = translit.convert_accents(r"tal\U{\i}\d{s} \={\i}", d)
+    assert out == "talı̮ṣ ī"
+
+
+def test_ain_not_taken_for_quote_in_table():
+    d = Diagnostics()
+    src = r"Fī `ālat & Arabic & `Alī b. Yaḥyā \\ Fī ajzā' al-ṭibb"
+    out, _ = translit.convert_ain_hamza(src, d)
+    assert out == r"Fī ʿālat & Arabic & ʿAlī b. Yaḥyā \\ Fī ajzāʾ al-ṭibb"
+
+
+def test_citation_char_protection_roundtrip():
+    from tex2docx.citations import protect_chars, restore_chars
+    text = r"Daiber, Hans and 東京大学 \textarabic{ص} Ḥunayn"
+    protected, n = protect_chars(text)
+    assert n == 5
+    assert "東" not in protected and "ص" not in protected and "Ḥunayn" in protected
+    assert restore_chars(protected) == text
+    # placeholders survive case changes applied by biblatex (e.g. sentence case)
+    assert restore_chars(protected.lower()) == r"daiber, hans and 東京大学 \textarabic{ص} ḥunayn"

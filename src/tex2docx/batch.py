@@ -53,9 +53,27 @@ def _file_hash(p: Path) -> str:
     return h.hexdigest()
 
 
+_CODE_HASH: str | None = None
+
+
+def code_hash() -> str:
+    """Hash of tex2docx itself, so that upgrading the converter re-converts documents."""
+    global _CODE_HASH
+    if _CODE_HASH is None:
+        h = hashlib.sha256()
+        pkg = Path(__file__).parent
+        for p in sorted(pkg.rglob("*")):
+            if p.is_file() and p.suffix in (".py", ".lua", ".yaml", ".docx"):
+                h.update(p.relative_to(pkg).as_posix().encode())
+                h.update(p.read_bytes())
+        _CODE_HASH = h.hexdigest()
+    return _CODE_HASH
+
+
 def fingerprint(deps: list[str], cfg: dict, tools: dict[str, Tool]) -> str:
     h = hashlib.sha256()
     h.update(__version__.encode())
+    h.update(code_hash().encode())
     h.update(config_fingerprint(cfg).encode())
     for name in sorted(tools):
         h.update(f"{name}={tools[name].version}".encode("utf-8"))

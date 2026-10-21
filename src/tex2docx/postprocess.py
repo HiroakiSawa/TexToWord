@@ -133,10 +133,19 @@ def classify_chars(text: str, para_rtl: bool, para_script: str = "R-arabic") -> 
             fill = next((c for c in (left, right) if c and is_rtl_class(c)), para_script)
         else:
             fill = "L"
-        for k in range(i, j):
+        start = i
+        if left and right and is_rtl_class(left) != is_rtl_class(right):
+            # sentence punctuation directly after a word belongs to that word's direction
+            while start < j and text[start] in CLOSING_PUNCT:
+                classes[start] = left
+                start += 1
+        for k in range(start, j):
             classes[k] = fill
         i = j
     return classes
+
+
+CLOSING_PUNCT = set(".,;:!?…،؛؟")
 
 
 def segments(text: str, classes: list[str]) -> list[tuple[str, str]]:
@@ -333,16 +342,30 @@ class PostProcessor:
             lang = {"bidi": self.SCRIPT_LANG[script_cls]} if script_cls.startswith("R") else \
                 {"val": self.SCRIPT_LANG[script_cls]}
             set_style_fonts(root, sid, {"ascii": font, "hAnsi": font, "cs": font}, lang)
-            pct = (self.cfg["fonts"].get("size_percent") or {}).get(self.SCRIPT_NAME[script_cls])
-            if pct and script_cls.startswith("R"):
-                sz = rpr.find(q("sz"))
-                base = int(sz.get(q("val"))) if sz is not None else 24
-                size = str(round(base * float(pct) / 100))
-                for st in root.findall(q("style")):
-                    if st.get(q("styleId")) == sid:
-                        srpr = st.find(q("rPr"))
-                        set_child(srpr, "sz", RPR_ORDER, {"val": size})
-                        set_child(srpr, "szCs", RPR_ORDER, {"val": size})
+        self._read_style_sizes(root, rpr)
+
+    def _read_style_sizes(self, root, default_rpr) -> None:
+        """Font size (half-points) per paragraph style, following basedOn chains."""
+        sz = default_rpr.find(q("sz"))
+        self.default_size = int(sz.get(q("val"))) if sz is not None else 24
+        self._style_raw: dict[str, tuple[int | None, str | None]] = {}
+        for st in root.findall(q("style")):
+            srpr = st.find(q("rPr"))
+            ssz = srpr.find(q("sz")) if srpr is not None else None
+            based = st.find(q("basedOn"))
+            self._style_raw[st.get(q("styleId"))] = (
+                int(ssz.get(q("val"))) if ssz is not None else None,
+                based.get(q("val")) if based is not None else None)
+
+    def style_size(self, style_id: str | None) -> int:
+        seen = set()
+        while style_id and style_id not in seen:
+            seen.add(style_id)
+            size, based = self._style_raw.get(style_id, (None, None))
+            if size:
+                return size
+            style_id = based
+        return getattr(self, "default_size", 24)
 
     # ---------------------------------------------------------- paragraphs
     def _run_text(self, run) -> str:
@@ -355,25 +378,58 @@ class PostProcessor:
         for t in root.iter(q("t")):
             if t.text:
                 t.text = unicodedata.normalize("NFC", t.text)
-        ratio = float(self.cfg["styles"].get("rtl_paragraph_ratio", 0.5))
         rtl_variants = self.cfg["styles"]["rtl_variants"]
+        rtl_styles = set(rtl_variants.values())
         for p in root.iter(q("p")):
-            rtl, ltr = strong_counts(self._para_text(p))
-            para_rtl = rtl > 0 and rtl > ratio * (rtl + ltr)
+            ppr = p.find(q("pPr"))
+            pstyle_el = ppr.find(q("pStyle")) if ppr is not None else None
+            current = pstyle_el.get(q("val")) if pstyle_el is not None else "Normal"
+            explicit = current in rtl_styles or (ppr is not None and ppr.find(q("bidi")) is not None)
+            lead = self._para_text(p).lstrip(" ")[:1]
+            if lead == "‎":
+                para_rtl = False
+            else:
+                para_rtl = explicit or lead == "‏" or self._paragraph_direction_is_rtl(p)
+                explicit = explicit and lead != "‏"
             if para_rtl:
                 self.stats.rtl_paragraphs += 1
-                ppr = get_ppr(p)
-                pstyle = ppr.find(q("pStyle"))
-                current = pstyle.get(q("val")) if pstyle is not None else "Normal"
-                variant = rtl_variants.get(current)
-                if variant and variant in self.style_ids.values():
-                    set_child(ppr, "pStyle", PPR_ORDER, {"val": variant})
-                else:
-                    set_child(ppr, "bidi", PPR_ORDER)
-            self._process_paragraph(p, para_rtl)
+                if not explicit:
+                    ppr = get_ppr(p)
+                    variant = rtl_variants.get(current)
+                    if variant and variant in self.style_ids.values():
+                        set_child(ppr, "pStyle", PPR_ORDER, {"val": variant})
+                        current = variant
+                    else:
+                        set_child(ppr, "bidi", PPR_ORDER)
+            self._process_paragraph(p, para_rtl, self.style_size(current))
         self._captions_and_highlights(root)
 
-    def _process_paragraph(self, p, para_rtl: bool) -> None:
+    def _paragraph_direction_is_rtl(self, p) -> bool:
+        """RTL when the first strong character is RTL and RTL letters are the majority.
+
+        Letters in runs tagged with an RTL language (e.g. a siglum inside an Arabic
+        environment) count as RTL. Explicit RTL paragraph styles are handled by the caller.
+        """
+        first = None
+        rtl = ltr = 0
+        for r in p.iter(q("r")):
+            text = self._run_text(r)
+            if not text:
+                continue
+            le = r.find(f"{q('rPr')}/{q('lang')}")
+            tagged_rtl = le is not None and self._is_rtl_lang(le.get(q("val")) or "")
+            for ch in text:
+                c = char_class(ch)
+                if c.startswith("R") or (c.startswith("L") and tagged_rtl):
+                    rtl += 1
+                    first = first or "R"
+                elif c.startswith("L"):
+                    ltr += 1
+                    first = first or "L"
+        ratio = float(self.cfg["styles"].get("rtl_paragraph_ratio", 0.5))
+        return first == "R" and rtl > ratio * (rtl + ltr)
+
+    def _process_paragraph(self, p, para_rtl: bool, base_size: int) -> None:
         runs = [r for r in p.iter(q("r")) if self._run_text(r)]
         if not runs:
             return
@@ -381,6 +437,7 @@ class PostProcessor:
         full = "".join(texts)
         classes = classify_chars(full, para_rtl, dominant_rtl_script(full))
         pos = 0
+        self._base_size = base_size
         for run, text in zip(runs, texts):
             self._process_run(run, text, classes[pos:pos + len(text)])
             pos += len(text)
@@ -439,6 +496,11 @@ class PostProcessor:
                 set_child(rpr, "iCs", RPR_ORDER)
             set_child(rpr, "rtl", RPR_ORDER)
             set_child(rpr, "lang", RPR_ORDER, {"val": self.main_lang, "bidi": word_lang})
+            pct = (self.cfg["fonts"].get("size_percent") or {}).get(script)
+            if pct and rpr.find(q("szCs")) is None:
+                size = str(round(getattr(self, "_base_size", 24) * float(pct) / 100))
+                set_child(rpr, "sz", RPR_ORDER, {"val": size})
+                set_child(rpr, "szCs", RPR_ORDER, {"val": size})
         elif cls == "L-greek":
             self.stats.greek_runs += 1
             sid = self.style_ids.get(names.get("greek"))

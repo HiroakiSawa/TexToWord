@@ -32,6 +32,7 @@ COMBINING = {
     "U": "̮",   # breve below      ḫ
     "D": "̤",   # diaeresis below
 }
+BELOW_ACCENTS = {"d", "b", "c", "k", "U", "D"}
 SPACING_ACCENTS = {"^": "^", "~": "~", "'": "´", "`": "`", '"': "¨", "=": "¯", ".": "˙"}
 SPECIAL_LETTERS = {
     "i": "ı", "j": "ȷ", "ss": "ß", "ae": "æ", "AE": "Æ", "oe": "œ", "OE": "Œ",
@@ -104,7 +105,12 @@ def _convert(s: str, extra: dict[str, str]) -> tuple[str, Counter, list[tuple[st
                 i = after
                 continue
             if arg is not None:
-                seq = arg[0] + table[name] + arg[1:]
+                comb = table[name]
+                if name in BELOW_ACCENTS and arg in ("i", "j") and "\\" in s[end:after]:
+                    arg = {"i": "ı", "j": "ȷ"}[arg]  # TeX puts below-accents under the dotless \i
+                if name == "~" and _is_greek(arg[0]):
+                    comb = "͂"  # Greek perispomeni, so that NFC gives ῶ, ᾶ, ...
+                seq = arg[0] + comb + arg[1:]
                 res = unicodedata.normalize("NFC", seq)
                 counts[(f"\\{name}{{{arg}}}", res)] += 1
                 out.append(res)
@@ -159,6 +165,10 @@ def _is_letter(ch: str) -> bool:
     return bool(ch) and bool(_LETTER.match(ch))
 
 
+def _is_greek(ch: str) -> bool:
+    return bool(ch) and (0x0370 <= ord(ch) <= 0x03FF or 0x1F00 <= ord(ch) <= 0x1FFF)
+
+
 def convert_ain_hamza(s: str, diag: Diagnostics, ain: str = "ʿ", hamza: str = "ʾ") -> tuple[str, Counter]:
     """Convert raw ` (ain) and ' (hamza) outside math, verbatim, URLs and \\texttt.
 
@@ -198,6 +208,11 @@ def convert_ain_hamza(s: str, diag: Diagnostics, ain: str = "ʿ", hamza: str = "
                 if nxt == "'" or prev == "'":
                     i += 1 if prev == "'" else 2
                     continue
+                if _is_greek(prev) or _is_greek(nxt):
+                    stats["greek_apostrophe"] += 1
+                    diag.info("ain_hamza", "ギリシア文字に接する ' はハムザに変換しませんでした", context_of(chunk, i))
+                    i += 1
+                    continue
                 if _is_letter(prev) and _CONTRACTIONS.match(chunk, i):
                     stats["apostrophe"] += 1
                     i += 1
@@ -221,16 +236,22 @@ def convert_ain_hamza(s: str, diag: Diagnostics, ain: str = "ʿ", hamza: str = "
     return apply_outside(s, spans, work), stats
 
 
+TRANSLIT_CHARS = re.compile("[āīūĀĪŪḥḤṣṢḍḌṭṬẓẒḫḪṯṮḏḎšŠǧǦġĠʿʾ]")
+
+
 def _find_quote_close(s: str, i: int) -> int | None:
     """For a ` at ``i``, find a closing ' of an English single-quoted phrase on the same paragraph."""
     limit = s.find("\n\n", i)
     limit = len(s) if limit < 0 else limit
+    first_word = re.match(r"[^\W\d_]+", s[i + 1:])
+    if first_word and TRANSLIT_CHARS.search(first_word.group(0)):
+        return None  # `Alī, `ālat: a transliterated word, so the ` is an ain
     j = i + 1
     saw_space = False
     while j < limit:
         ch = s[j]
-        if ch == "`":
-            return None
+        if ch == "`" or ch == "&" or s.startswith("\\\\", j):
+            return None  # quotations do not span table cells or lines
         if ch in " \n":
             saw_space = True
         if ch == "'" and saw_space:

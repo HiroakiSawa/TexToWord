@@ -76,7 +76,15 @@ def compile_document(main: Path, build: Path, deps: list[Path], tools: dict[str,
         extra += 1
     ok = pdf.exists()
     if log.exists():
-        errors = [l for l in log.read_text(encoding="utf-8", errors="replace").splitlines()
+        log_text = log.read_text(encoding="utf-8", errors="replace")
+        missing = sorted(set(re.findall(r"Missing character: There is no (\S+) (?:\(U\+[0-9A-F]+\) )?in font ([^!\n]+)",
+                                        log_text)))
+        if missing:
+            chars = "".join(sorted({c for c, _ in missing}))
+            fonts = ", ".join(sorted({f.strip() for _, f in missing}))[:200]
+            diag.warning("compile", f"元の PDF では字形が無く表示されない文字があります（docx には文字として入ります）: {chars[:80]}",
+                         f"フォント: {fonts}")
+        errors = [l for l in log_text.splitlines()
                   if l.startswith("!") or re.match(r"^[^:\n]+:\d+: ", l)]
         if errors:
             diag.warning("compile", f"LaTeX のログにエラーが {len(errors)} 件あります（PDF は {'生成' if ok else '未生成'}）",

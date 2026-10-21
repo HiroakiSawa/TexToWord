@@ -28,6 +28,18 @@ HEADING_MAP = {"eledchapter": "chapter", "eledsection": "section", "eledsubsecti
                "eledsubsubsection": "subsubsection", "eledpart": "part"}
 
 
+def _first_strong_is_rtl(tex: str) -> bool:
+    from .postprocess import char_class
+    plain = re.sub(r"\\[A-Za-z@]+\*?|\{|\}|\[[^\]]*\]", " ", tex)
+    for ch in plain:
+        c = char_class(ch)
+        if c.startswith("R"):
+            return True
+        if c.startswith("L"):
+            return False
+    return False
+
+
 class Apparatus:
     def __init__(self, cfg: dict, markers: Markers, diag: Diagnostics):
         self.cfg = cfg["apparatus"]
@@ -47,11 +59,12 @@ class Apparatus:
         else:
             text = self.cfg["format"].format(prefix=prefix, lemma=lemma.strip(), note=content.strip())
         direction = self.cfg.get("direction", "auto")
-        lead = ""
-        if direction == "rtl":
-            lead = self.markers.para(self.styles["rtl_variants"]["FootnoteText"], kind="apparatus-rtl")
-        elif direction == "ltr":
-            lead = self.markers.para("FootnoteText", kind="apparatus-ltr")
+        if direction == "auto":
+            # the note reads in the direction of the text it annotates
+            direction = "rtl" if _first_strong_is_rtl(lemma if lemma and lemma.strip() else content) else "auto"
+        # pandoc forces "Footnote Text" on note paragraphs, so the direction travels as a
+        # leading RLM/LRM mark, which the post-processor (and Word) treat as explicit
+        lead = {"rtl": "‏", "ltr": "‎"}.get(direction, "")
         self.stats[f"[{layer}]"] += 1
         return "\\footnote{" + lead + text + "}"
 

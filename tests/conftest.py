@@ -76,7 +76,7 @@ class DocxXml:
         out = []
         for fn in self.footnotes.findall(W + "footnote"):
             if fn.get(W + "type") in (None, "normal"):
-                out.append("".join(t.text or "" for t in fn.iter(W + "t")).strip())
+                out.append("".join(t.text or "" for t in fn.iter(W + "t")).strip().lstrip("‎‏"))
         return out
 
     def paragraph_of(self, run):
