@@ -219,6 +219,12 @@ macros:
     - Columns
     - Pages
     - AtBeginDocument
+    - rowcolor
+    - rowcolors
+    - cellcolor
+    - arrayrulecolor
+    - arraystretch
+    - tabcolsep
   # 中身を残して外側だけ取り除く環境（レイアウト用）
   transparent_environments:
     - center
@@ -232,6 +238,8 @@ macros:
     - minipage
     - RTL
     - LTR
+    - threeparttable
+    - adjustwidth
 
 verify:
   pdf_compare: true

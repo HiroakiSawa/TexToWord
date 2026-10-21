@@ -40,6 +40,7 @@ AUTOREF_NAMES = {"part": "Part", "chapter": "Chapter", "section": "section",
                  "subsection": "subsection", "subsubsection": "subsubsection",
                  "figure": "Figure", "table": "Table", "equation": "Equation",
                  "footnote": "footnote", "page": "page", "enumi": "item"}
+NUMBERED_MATH = ("equation", "align", "gather", "multline", "flalign", "alignat", "eqnarray")
 PAGE_PREFIX = re.compile(r"\b(?:pp?\.|pages?|S\.|Seite)(?:~|\\,|\\ |\s)*$")
 
 
@@ -174,6 +175,8 @@ class Structure:
         self.markers = markers
         self.diag = diag
         self.has_chapters = has_chapters
+        self.preamble = preamble
+        self.computed_labels: dict[str, str] = {}
         self.cref_names = dict(CREF_DEFAULTS)
         self.cref_names_cap: dict[str, tuple[str, str]] = {}
         self._read_cref_names(preamble)
@@ -290,8 +293,86 @@ class Structure:
                              self.markers.char(core, sec_style, kind="heading-number") + tail))
 
         repl += self._captions(text)
+        eq_repl = self._equations(text, headings)
+        if self.cfg.get("equations", {}).get("numbering", "static") == "static":
+            repl += eq_repl
         repl += self._references(text)
         return replace_spans(text, self._drop_overlaps(repl))
+
+    # ------------------------------------------------------------ equations
+    def _equations(self, text: str, headings: list[Heading]) -> list[tuple[int, int, str]]:
+        m = re.search(r"\\numberwithin\s*\{equation\}\s*\{(\w+)\}", self.preamble)
+        reset = m.group(1) if m else ("chapter" if self.has_chapters else None)
+        events = [(h.start, "h", h) for h in headings if not h.starred]
+        for env in NUMBERED_MATH:
+            try:
+                events += [(b, "e", (env, bs, be)) for b, bs, be, _ in find_environments(text, env)]
+            except ScanError:
+                continue
+        events.sort(key=lambda x: x[0])
+        prefix = None
+        counter = 0
+        repl = []
+        for pos, kind, obj in events:
+            if kind == "h":
+                if reset and obj.kind == reset:
+                    prefix = obj.number
+                    counter = 0
+                elif reset and SECTION_LEVELS.get(obj.kind, 9) < SECTION_LEVELS.get(reset, 9):
+                    counter = 0
+                continue
+            env, bs, be = obj
+            rows = self._math_rows(text, bs, be) if env not in ("equation", "multline") else [(bs, be)]
+            if env == "multline":
+                rows = [(bs, be)]
+            for rs, re_ in rows:
+                row = text[rs:re_]
+                if re.search(r"\\(?:nonumber|notag)\b", row):
+                    continue
+                tag = re.search(r"\\tag\*?\s*\{([^}]*)\}", row)
+                if tag:
+                    number = tag.group(1)
+                else:
+                    counter += 1
+                    number = f"{prefix}.{counter}" if prefix else str(counter)
+                    lab = re.search(r"\\label\s*\{([^}]*)\}", row)
+                    if lab and lab.group(1) in self.aux.labels and self.aux.labels[lab.group(1)][0]:
+                        aux_num = self.aux.labels[lab.group(1)][0]
+                        if aux_num != number:
+                            self.diag.info("equation", f"式番号を .aux の値 {aux_num} に合わせました（計算値 {number}）")
+                        number = aux_num
+                    elif lab:
+                        self.computed_labels[lab.group(1)] = number
+                end = re_
+                while end > rs and text[end - 1] in " \t\n":
+                    end -= 1
+                repl.append((end, end, f"\\qquad\\text{{({number})}}"))
+        return repl
+
+    @staticmethod
+    def _math_rows(text: str, bs: int, be: int) -> list[tuple[int, int]]:
+        rows = []
+        depth = 0
+        start = bs
+        i = bs
+        while i < be:
+            c = text[i]
+            if c == "\\" and text[i + 1:i + 2] == "\\" and depth == 0:
+                rows.append((start, i))
+                i += 2
+                start = i
+                continue
+            if c == "\\":
+                i += 2
+                continue
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+            i += 1
+        if text[start:be].strip():
+            rows.append((start, be))
+        return rows
 
     @staticmethod
     def _drop_overlaps(repl):
@@ -351,6 +432,9 @@ class Structure:
     def _ref_number(self, key: str) -> str | None:
         if key in self.aux.labels:
             return self.aux.labels[key][0]
+        if key in self.computed_labels:
+            self.diag.info("reference", f"\\ref{{{key}}} を計算した式番号 {self.computed_labels[key]} で解決しました")
+            return self.computed_labels[key]
         return None
 
     def _type_of(self, key: str) -> str:

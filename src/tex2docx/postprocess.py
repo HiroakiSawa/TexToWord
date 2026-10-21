@@ -480,8 +480,24 @@ class PostProcessor:
                     set_child(get_rpr(new), "vertAlign", RPR_ORDER, {"val": "superscript"})
                 t = etree.SubElement(new, q("t"))
                 t.text = sep
+                if self._paragraph_is_rtl(run):
+                    set_child(get_rpr(new), "rtl", RPR_ORDER)
                 run.addnext(new)
                 self.stats.separators += 1
+
+    def _paragraph_is_rtl(self, el) -> bool:
+        p = el.getparent()
+        while p is not None and p.tag != q("p"):
+            p = p.getparent()
+        if p is None:
+            return False
+        ppr = p.find(q("pPr"))
+        if ppr is None:
+            return False
+        if ppr.find(q("bidi")) is not None:
+            return True
+        ps = ppr.find(q("pStyle"))
+        return ps is not None and ps.get(q("val")) in set(self.cfg["styles"]["rtl_variants"].values())
 
     def _captions_and_highlights(self, root) -> None:
         cap = self.style_ids.get(self.cfg["styles"]["caption"], "Caption")

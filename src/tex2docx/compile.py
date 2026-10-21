@@ -33,6 +33,11 @@ def compile_document(main: Path, build: Path, deps: list[Path], tools: dict[str,
     if not force and pdf.exists() and aux.exists() and pdf.stat().st_mtime >= _newest_mtime(deps):
         diag.info("compile", "前回のコンパイル結果が最新なので再利用しました")
         return CompileResult(pdf, aux, log, False, True)
+    # Start from a clean directory: stale reledmac line lists make line labels alternate
+    # between resolved and "000" from one conversion to the next.
+    for f in build.iterdir():
+        if f.is_file():
+            f.unlink()
     xelatex = tools["xelatex"]
     timeout = int(cfg["compile"].get("timeout", 1200))
     runs = max(1, int(cfg["compile"].get("runs", 3)))

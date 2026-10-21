@@ -1,0 +1,32 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\begin{document}
+\section{Mathematics}
+Inline $a^2+b^2=c^2$ and numbered:
+\begin{equation}\label{eq:one}
+H = \sum_{i=1}^{4} q_i
+\end{equation}
+\begin{align}
+a &= b \\
+c &= d \nonumber \\
+e &= f \tag{A}
+\end{align}
+See \eqref{eq:one}.
+
+\section{Tables}
+\begin{table}
+\caption{Witnesses}\label{tab:w}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\toprule
+\multirow{2}{*}{P} & \multicolumn{2}{c}{Paris} \\
+\cmidrule(lr){2-3}
+ & arabe & 2860 \\
+\rowcolor{gray} I & Istanbul & 3593 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+\end{document}

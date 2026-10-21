@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
-from . import citations, langs, macros, refs, reledmac, translit
+from . import citations, figures, langs, macros, refs, reledmac, translit
 from .compile import compile_document
 from .diagnostics import Diagnostics
 from .flatten import FlatDocument, flatten
@@ -95,7 +95,8 @@ def main_language(preamble: str, cfg: dict) -> str:
 
 def preprocess(doc: FlatDocument, cfg: dict, aux: refs.AuxData, markers: Markers,
                diag: Diagnostics, build: Path | None = None,
-               tools: dict[str, Tool] | None = None) -> tuple[str, dict, str, str]:
+               tools: dict[str, Tool] | None = None,
+               extra_deps: list[Path] | None = None) -> tuple[str, dict, str, str]:
     """Return (pandoc_body, title_fields, source_text_for_checks, expanded_body)."""
     stats = diag.stats
     table = macros.MacroTable()
@@ -139,11 +140,16 @@ def preprocess(doc: FlatDocument, cfg: dict, aux: refs.AuxData, markers: Markers
     if astats:
         stats["校訂注"] = dict(astats)
     if build is not None and tools is not None:
-        cls = doc.documentclass if not doc.class_options else f"{doc.documentclass}"
-        body, cstats = citations.apply_citations(body, cls, preamble, doc.root, doc.bib_files,
-                                                 build, tools, cfg, markers, diag)
+        body, cstats = citations.apply_citations(body, doc.documentclass, doc.preamble, doc.root,
+                                                 doc.bib_files, build, tools, cfg, markers, diag)
         if cstats:
             stats["引用"] = dict(cstats)
+        body, fstats, fdeps = figures.process_figures(body, doc.root, doc.preamble, build, tools, cfg,
+                                                      markers, diag)
+        if fstats:
+            stats["図"] = dict(fstats)
+        if extra_deps is not None:
+            extra_deps.extend(fdeps)
     return body, titles, source_text, expanded
 
 
@@ -219,7 +225,8 @@ def convert_document(main: Path, input_root: Path, out_dir: Path, cfg: dict, too
             diag.warning("compile", "コンパイルを行わないため、相互参照番号は解決されません")
 
         markers = Markers()
-        body, titles, source_text, expanded = preprocess(doc, cfg, aux_data, markers, diag, build, tools)
+        body, titles, source_text, expanded = preprocess(doc, cfg, aux_data, markers, diag, build, tools,
+                                                         result.deps)
         autocite_fn = bool(re.search(r"autocite\s*=\s*footnote|style\s*=\s*[\w-]*(?:verbose|notes)",
                                      doc.preamble))
         expected = verify.expected_footnotes(expanded, autocite_fn)
@@ -255,6 +262,7 @@ def convert_document(main: Path, input_root: Path, out_dir: Path, cfg: dict, too
             verify.check_codepoints(content, source_text, limit),
             verify.check_unconverted(content, cfg, limit),
             verify.check_citations(content, verify.bib_keys(doc.bib_files), limit),
+            verify.check_cell_spans(out_docx, expanded),
         ]
         if cfg["verify"].get("pdf_compare", True):
             if pdf and "pdftotext" in tools:

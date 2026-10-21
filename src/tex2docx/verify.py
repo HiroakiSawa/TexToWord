@@ -366,6 +366,27 @@ def check_codepoints(content: DocxContent, source_text: str, limit: int) -> Chec
     return Check("特殊文字の個数", OK, f"非 ASCII 文字 {len(src)} 種すべてがソース以上の個数で存在")
 
 
+def expected_cell_spans(source: str) -> tuple[int, int]:
+    cols = sum(1 for m in re.finditer(r"\\multicolumn\s*\{\s*(\d+)\s*\}", source) if int(m.group(1)) > 1)
+    rows = sum(1 for m in re.finditer(r"\\multirow\s*(?:\[[^\]]*\])?\s*\{\s*(-?\d+)\s*\}", source)
+               if abs(int(m.group(1))) > 1)
+    return cols, rows
+
+
+def check_cell_spans(docx_path: Path, source: str) -> Check:
+    exp_cols, exp_rows = expected_cell_spans(source)
+    if not exp_cols and not exp_rows:
+        return Check("表のセル結合", SKIP, "\\multicolumn / \\multirow なし")
+    with zipfile.ZipFile(docx_path) as z:
+        root = etree.fromstring(z.read("word/document.xml"))
+    got_cols = sum(1 for g in root.iter(q("gridSpan")) if int(g.get(q("val"), "1")) > 1)
+    got_rows = sum(1 for v in root.iter(q("vMerge")) if v.get(q("val")) == "restart")
+    summary = f"横結合 ソース {exp_cols} / docx {got_cols}、縦結合 ソース {exp_rows} / docx {got_rows}"
+    if got_cols < exp_cols or got_rows < exp_rows:
+        return Check("表のセル結合", WARN, "再現できなかったセル結合があります: " + summary)
+    return Check("表のセル結合", OK, summary)
+
+
 def bib_keys(bib_files: list[Path]) -> set[str]:
     keys = set()
     for p in bib_files:
