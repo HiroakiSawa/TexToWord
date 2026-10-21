@@ -39,6 +39,7 @@ jobs:
             fontspec
             graphics
             iftex
+            kastrup
             kvoptions
             l3packages
             logreq

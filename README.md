@@ -48,7 +48,7 @@ python -m pip install git+https://github.com/HiroakiSawa/TexToWord.git
 | Ghostscript | 任意 | EPS 図の変換 | `brew install ghostscript` | `winget install --id ArtifexSoftware.GhostScript -e`（TeX Live の `rungs` でも代用可） |
 | Inkscape | 任意 | SVG 図の変換 | `brew install --cask inkscape` | `winget install --id Inkscape.Inkscape -e` |
 
-TeX Live に make4ht や biber が入っていなければ、`tlmgr install make4ht tex4ht biber` で追加できます（macOS では `sudo` が必要な場合があります）。
+TeX Live に make4ht や biber が入っていなければ、`tlmgr install make4ht tex4ht luaxml kastrup biber` で追加できます（macOS では `sudo` が必要な場合があります）。TeX Live を最小構成（scheme-basic など）で入れていると、tex4ht が必要とする `binhex.tex`（`kastrup` パッケージ）が無くて引用の整形に失敗します。その場合はレポートに「I can't find file `binhex'」のように不足ファイルが表示されるので、`tlmgr search --global --file binhex.tex` で含まれるパッケージを調べて追加してください。
 
 導入できたかは次で確認できます。見つからないツールは、OS に合った導入方法が表示されます。
 
