@@ -1,0 +1,11 @@
+\documentclass{article}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{english}
+\usepackage[style=authoryear]{biblatex}
+\addbibresource{citations.bib}
+\begin{document}
+As \textcite{Ullmann1970} showed.\footnote{\cite[59]{Ullmann1970}.}
+Later \parencite[e.g.][12]{Koetschet2019}.\footcite[12]{Koetschet2019}
+\printbibliography
+\end{document}

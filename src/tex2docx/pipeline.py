@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
-from . import langs, macros, refs, reledmac, translit
+from . import citations, langs, macros, refs, reledmac, translit
 from .compile import compile_document
 from .diagnostics import Diagnostics
 from .flatten import FlatDocument, flatten
@@ -94,7 +94,8 @@ def main_language(preamble: str, cfg: dict) -> str:
 
 
 def preprocess(doc: FlatDocument, cfg: dict, aux: refs.AuxData, markers: Markers,
-               diag: Diagnostics) -> tuple[str, dict, str, str]:
+               diag: Diagnostics, build: Path | None = None,
+               tools: dict[str, Tool] | None = None) -> tuple[str, dict, str, str]:
     """Return (pandoc_body, title_fields, source_text_for_checks, expanded_body)."""
     stats = diag.stats
     table = macros.MacroTable()
@@ -137,6 +138,12 @@ def preprocess(doc: FlatDocument, cfg: dict, aux: refs.AuxData, markers: Markers
     body, astats = reledmac.transform_apparatus(body, cfg, markers, diag)
     if astats:
         stats["校訂注"] = dict(astats)
+    if build is not None and tools is not None:
+        cls = doc.documentclass if not doc.class_options else f"{doc.documentclass}"
+        body, cstats = citations.apply_citations(body, cls, preamble, doc.root, doc.bib_files,
+                                                 build, tools, cfg, markers, diag)
+        if cstats:
+            stats["引用"] = dict(cstats)
     return body, titles, source_text, expanded
 
 
@@ -212,8 +219,10 @@ def convert_document(main: Path, input_root: Path, out_dir: Path, cfg: dict, too
             diag.warning("compile", "コンパイルを行わないため、相互参照番号は解決されません")
 
         markers = Markers()
-        body, titles, source_text, expanded = preprocess(doc, cfg, aux_data, markers, diag)
-        expected = verify.expected_footnotes(expanded)
+        body, titles, source_text, expanded = preprocess(doc, cfg, aux_data, markers, diag, build, tools)
+        autocite_fn = bool(re.search(r"autocite\s*=\s*footnote|style\s*=\s*[\w-]*(?:verbose|notes)",
+                                     doc.preamble))
+        expected = verify.expected_footnotes(expanded, autocite_fn)
 
         (build / "input.tex").write_text(pandoc_document(doc, body, titles), encoding="utf-8", newline="\n")
         filter_cfg = {

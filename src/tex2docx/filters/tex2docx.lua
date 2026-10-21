@@ -80,21 +80,34 @@ local function RawBlock(el)
   return blocks
 end
 
-local function Span(el)
-  local m = cfg.markers[el.identifier]
-  if not m or m.type ~= "char" then
+local function marker_of(el)
+  if el.t ~= "Link" then
     return nil
   end
-  el.identifier = ""
-  el.attributes["custom-style"] = m.style
-  return el
+  local key = el.target:match("^tdx:(.+)$")
+  return key and cfg.markers[key], key
 end
 
--- paragraph markers: an (empty) marker span at the start of a paragraph
+-- character markers: \href{tdx:m-N}{...} -> Span with a Word character style
+local function Link(el)
+  local m, key = marker_of(el)
+  if key == nil then
+    return nil
+  end
+  if m == nil then
+    return pandoc.Span(el.content)
+  end
+  if m.type ~= "char" then
+    return nil
+  end
+  return pandoc.Span(el.content, { ["custom-style"] = m.style })
+end
+
+-- paragraph markers: an empty marker link at the start of a paragraph
 local function take_para_marker(inlines)
   for i, il in ipairs(inlines) do
-    if il.t == "Span" then
-      local m = cfg.markers[il.identifier]
+    if il.t == "Link" then
+      local m = marker_of(il)
       if m and m.type == "para" then
         inlines:remove(i)
         if inlines[i] and inlines[i].t == "Space" then
@@ -144,7 +157,7 @@ function Pandoc(doc)
   doc = doc:walk({
     RawInline = RawInline,
     RawBlock = RawBlock,
-    Span = Span,
+    Link = Link,
   })
   doc = doc:walk({
     Para = block_with_marker,

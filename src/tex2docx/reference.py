@@ -41,6 +41,12 @@ def build_reference_docx(pandoc: Tool, out: Path, cfg: dict, main_font: str = "T
                 srpr = etree.SubElement(st, q("rPr"))
             set_child(srpr, "sz", RPR_ORDER, {"val": "20"})
             set_child(srpr, "szCs", RPR_ORDER, {"val": "20"})
+        if st.get(q("styleId")) == "Bibliography":
+            ppr = st.find(q("pPr"))
+            if ppr is None:
+                ppr = etree.SubElement(st, q("pPr"))
+            set_child(ppr, "spacing", PPR_ORDER, {"before": "0", "after": "120"})
+            set_child(ppr, "ind", PPR_ORDER, {"left": "720", "hanging": "720"})
         if st.get(q("styleId")) in ("BodyText", "FirstParagraph"):
             ppr = st.find(q("pPr"))
             if ppr is None:

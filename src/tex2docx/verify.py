@@ -17,6 +17,7 @@ from .texscan import iter_control_sequences
 from .tools import Tool, run
 
 OK, WARN, FAIL, SKIP = "ok", "warn", "fail", "skip"
+M_T = "{http://schemas.openxmlformats.org/officeDocument/2006/math}t"
 
 
 @dataclass
@@ -67,7 +68,6 @@ def read_docx(path: Path) -> DocxContent:
             footnotes = sum(1 for fn in root.findall(q("footnote"))
                             if fn.get(q("type")) in (None, "normal"))
         for p in root.iter(q("p")):
-            ptext = []
             for r in p.iter(q("r")):
                 text = "".join(t.text or "" for t in r.findall(q("t")))
                 if not text:
@@ -81,8 +81,7 @@ def read_docx(path: Path) -> DocxContent:
                     le = rpr.find(q("lang"))
                     lang = le.get(q("bidi")) if le is not None else None
                 runs.append(DocxRun(text, style, bool(rtl), lang, pname, len(paragraphs)))
-                ptext.append(text)
-            paragraphs.append("".join(ptext))
+            paragraphs.append("".join(t.text or "" for t in p.iter(q("t"), M_T)))
     return DocxContent(runs, paragraphs, footnotes, names)
 
 
@@ -145,15 +144,28 @@ def rtl_tokens(text: str) -> list[str]:
     return [w for w in out if any(char_class(ch).startswith("R") for ch in w)]
 
 
+# pdftotext (without -layout) may glue an all-caps running head onto the first body line
+RUNNING_HEAD_PREFIX = re.compile(r"^\s*(?:(?:[\dIVXL]+\.)*[\dIVXL]*\.?\s+)?"
+                                 r"(?:(?:[\d.]+\s+)?[A-Z][A-Z\d'’.,:;()\-]+\s+){2,}"
+                                 r"(?=[A-Za-z])")
+
+
+def _mostly_upper(line: str) -> bool:
+    letters = [c for c in line if c.isalpha()]
+    return len(letters) >= 4 and sum(c.isupper() for c in letters) >= 0.7 * len(letters)
+
+
 def _remove_running_heads(pdf_text: str) -> str:
+    """Drop page-edge lines that are running heads/feet (repeated, all caps, or page numbers)."""
+    pdf_text = pdf_text.replace("\r\n", "\n").replace("\r", "\n")
     pages = pdf_text.split("\f")
-    norm = lambda s: re.sub(r"\s+", " ", re.sub(r"[\dIVXLCDMivxlcdm]+\b", "", s)).strip().casefold()
+    norm = lambda s: re.sub(r"\s+", " ", re.sub(r"\b[ivxlcdmIVXLCDM]+\b|\d+", "", s)).strip().casefold()
     cand_count: Counter = Counter()
     page_lines = []
     for page in pages:
         lines = page.split("\n")
         nonempty = [i for i, l in enumerate(lines) if l.strip()]
-        edges = set(nonempty[:2] + nonempty[-2:])
+        edges = set(nonempty[:3] + nonempty[-3:])
         page_lines.append((lines, edges))
         for n in {norm(lines[i]) for i in edges}:
             if n:
@@ -164,8 +176,11 @@ def _remove_running_heads(pdf_text: str) -> str:
         kept = []
         for i, l in enumerate(lines):
             s = l.strip()
-            if i in edges and (norm(l) in repeated or re.fullmatch(r"[\divxlcdmIVXLCDM]+", s or "x")):
+            if i in edges and (norm(l) in repeated or _mostly_upper(l)
+                               or re.fullmatch(r"[\divxlcdmIVXLCDM]+", s or "x")):
                 continue
+            if i in edges:
+                l = RUNNING_HEAD_PREFIX.sub("", l)
             kept.append(l)
         out_pages.append("\n".join(kept))
     return "\n".join(out_pages)
