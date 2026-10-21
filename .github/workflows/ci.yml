@@ -54,10 +54,10 @@ jobs:
             xstring
 
       - name: Install tex2docx
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev]" pytest-github-actions-annotate-failures
 
       - name: Check external tools
         run: tex2docx check-tools
 
       - name: Run tests
-        run: python -m pytest -q
+        run: python -m pytest -q -rfE --tb=short
